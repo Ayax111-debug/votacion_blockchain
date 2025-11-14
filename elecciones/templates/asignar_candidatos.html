@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asignar Candidatos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <h4>Asignar Candidatos al Evento: {{ evento.nombre }}</h4>
+
+        <!-- JSON seguro con los IDs seleccionados -->
+        {{ candidatos_actuales|json_script:"initial-selected" }}
+
+        <form method="post" id="form-asignar">
+            <input type="hidden" name="candidatos_globales" id="candidatos_globales">
+            {% csrf_token %}
+            <div class="mb-3">
+                {% for persona in page_obj %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="candidatos" value="{{ persona.id }}"
+                               id="persona_{{ persona.id }}">
+                        <label class="form-check-label" for="persona_{{ persona.id }}">
+                            {{ persona.nombre }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Paginación -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+
+            <button type="submit" class="btn btn-success">Guardar Candidatos</button>
+            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const STORAGE_KEY = `candidatos_evento_{{ evento.id }}`;
+    const form = document.getElementById('form-asignar');
+    const hiddenField = document.getElementById('candidatos_globales');
+
+    // Recuperar selección previa del localStorage
+    let globalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+
+    // Fusionar con selección inicial del servidor (solo la primera vez)
+    const initialSelected = JSON.parse(document.getElementById('initial-selected').textContent || '[]');
+    if (globalSet.size === 0) {
+        initialSelected.forEach(id => globalSet.add(String(id)));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
+    }
+
+    // Al cargar, marcar checkboxes según el set global
+    document.querySelectorAll('input[name="candidatos"]').forEach(cb => {
+        cb.checked = globalSet.has(cb.value);
+
+        cb.addEventListener('change', () => {
+            if (cb.checked) {
+                globalSet.add(cb.value);
+            } else {
+                globalSet.delete(cb.value);
+            }
+            // Guardar siempre el estado global en localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
+            hiddenField.value = Array.from(globalSet).join(',');
+        });
+    });
+
+    // Al cargar la página, sincronizar el campo oculto con localStorage
+    hiddenField.value = Array.from(globalSet).join(',');
+
+    // Antes de enviar, leer directamente de localStorage y volcar TODO al campo oculto
+    form.addEventListener('submit', () => {
+        const finalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+        hiddenField.value = Array.from(finalSet).join(',');
+        // Opcional: limpiar después de guardar
+        // localStorage.removeItem(STORAGE_KEY);
+    });
+});
+</script>
+
+
+
+
+</body>
+</html>

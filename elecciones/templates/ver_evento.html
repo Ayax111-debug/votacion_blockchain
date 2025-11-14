@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ evento.nombre }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <h3>Detalles del Evento: {{ evento.nombre }}</h3>
+        <p><strong>Inicio:</strong> {{ evento.fecha_inicio|date:"d M Y H:i" }}</p>
+        <p><strong>Término:</strong> {{ evento.fecha_termino|date:"d M Y H:i" }}</p>
+
+        <h5 class="mt-4">Candidatos Asignados</h5>
+        <table class="table table-bordered bg-white">
+            <thead>
+                <tr>
+                    <th>Foto</th>
+                    <th>Nombre</th>
+                    <th>Fecha de Registro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidatos %}
+                <tr>
+                    <td>
+                        {% if c.persona.foto_url %}
+                            <img src="{{ c.persona.foto_url }}" alt="Foto de {{ c.persona.nombre }}" class="thumb img-thumbnail">
+                        {% else %}
+                            <span class="text-muted">Sin foto</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ c.persona.nombre }}</td>
+                    <td>{{ c.fecha_registro|date:"d M Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted">No hay candidatos asignados</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Administración</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Panel de Administración</h2>
+            <a href="{% url 'logout' %}" class="btn btn-outline-secondary">Cerrar Sesión</a>
+        </div>
+
+        <!-- Resumen -->
+        <p class="text-muted">
+            Total de eventos: {{ eventos|length }} |
+            {% if eventos %}
+                Último evento creado: {{ eventos.0.nombre }} ({{ eventos.0.created_at|date:"d M Y" }})
+            {% endif %}
+        </p>
+
+        <!-- Sección de eventos -->
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Eventos de Elección</h4>
+                <a href="{% url 'crear_evento' %}" class="btn btn-primary">+ Crear Nuevo Evento</a>
+            </div>
+
+            <!-- Botones de filtro -->
+            <div class="btn-group mb-3" role="group">
+                <a href="{% url 'panel_admin' %}?filtro=todos" class="btn {% if filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
+                <a href="{% url 'panel_admin' %}?filtro=curso" class="btn {% if filtro == 'curso' %}btn-success{% else %}btn-outline-success{% endif %}">En curso</a>
+                <a href="{% url 'panel_admin' %}?filtro=futuro" class="btn {% if filtro == 'futuro' %}btn-primary{% else %}btn-outline-primary{% endif %}">Futuros</a>
+                <a href="{% url 'panel_admin' %}?filtro=terminado" class="btn {% if filtro == 'terminado' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Terminados</a>
+            </div>
+
+            <table class="table table-bordered bg-white">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Fechas</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for evento in eventos %}
+                    <tr>
+                        <td>{{ evento.nombre }}</td>
+                        <td>
+                            {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if evento.estado == 'En curso' %}bg-success
+                                {% elif evento.estado == 'Futuro' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ evento.estado }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success btn-sm">Asignar Candidatos</a>
+                            <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info btn-sm">Ver Detalles</a>
+
+                            {% if evento.activo %}
+                                <form method="post" action="{% url 'desactivar_evento' evento.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-warning btn-sm">Desactivar</button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'activar_evento' evento.id %}" class="btn btn-outline-success btn-sm">Activar</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">No hay eventos aún</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
