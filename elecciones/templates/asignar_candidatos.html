@@ -7,66 +7,122 @@
 </head>
 <body class="bg-light">
     <div class="container mt-4">
-        <h4>Asignar Candidatos al Evento: {{ evento.nombre }}</h4>
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>Asignar Candidatos</h2>
+                <p class="text-muted">Evento: <strong>{{ evento.nombre }}</strong></p>
+                <p class="text-muted">Fecha: {{ evento.fecha_inicio|date:"d/m/Y H:i" }} a {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
 
-        <!-- JSON seguro con los IDs seleccionados -->
+        <!-- JSON seguro con los IDs seleccionados (UUIDs) -->
         {{ candidatos_actuales|json_script:"initial-selected" }}
 
         <form method="post" id="form-asignar">
-            <input type="hidden" name="candidatos_globales" id="candidatos_globales">
             {% csrf_token %}
-            <div class="mb-3">
-                {% for persona in page_obj %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="candidatos" value="{{ persona.id }}"
-                               id="persona_{{ persona.id }}">
-                        <label class="form-check-label" for="persona_{{ persona.id }}">
-                            {{ persona.nombre }}
-                        </label>
-                    </div>
-                {% endfor %}
+            <input type="hidden" name="candidatos_globales" id="candidatos_globales">
+
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Seleccionar Votantes como Candidatos</h5>
+                </div>
+                <div class="card-body">
+                    {% if page_obj %}
+                        <div class="mb-3">
+                            {% for persona in page_obj %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="candidatos" 
+                                           value="{{ persona.id }}"
+                                           id="persona_{{ persona.id }}">
+                                    <label class="form-check-label" for="persona_{{ persona.id }}">
+                                        <strong>{{ persona.nombre }}</strong>
+                                        {% if persona.email %}
+                                            <br><small class="text-muted">{{ persona.email }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            No hay votantes disponibles para asignar como candidatos.
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Paginación -->
-            <nav aria-label="Page navigation">
-                <ul class="pagination">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav aria-label="Paginación de votantes">
+                    <ul class="pagination mb-4">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">Primera</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Primera</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Anterior</span>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
                         </li>
-                    {% endif %}
 
-                    <li class="page-item active">
-                        <span class="page-link">
-                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                        </span>
-                    </li>
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Siguiente</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Última</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
 
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-
-            <button type="submit" class="btn btn-success">Guardar Candidatos</button>
-            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
+            <!-- Botones de acción -->
+            <div class="d-grid gap-2 d-sm-flex">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-circle"></i> Guardar Candidatos
+                </button>
+                <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+            </div>
         </form>
     </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const STORAGE_KEY = `candidatos_evento_{{ evento.id }}`;
+    const eventoId = '{{ evento.id }}';
+    const STORAGE_KEY = 'candidatos_evento_' + eventoId;
     const form = document.getElementById('form-asignar');
     const hiddenField = document.getElementById('candidatos_globales');
 
     // Recuperar selección previa del localStorage
     let globalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
 
-    // Fusionar con selección inicial del servidor (solo la primera vez)
+    // Fusionar con selección inicial del servidor
     const initialSelected = JSON.parse(document.getElementById('initial-selected').textContent || '[]');
-    if (globalSet.size === 0) {
+    if (globalSet.size === 0 && initialSelected.length > 0) {
         initialSelected.forEach(id => globalSet.add(String(id)));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
     }
@@ -91,17 +147,12 @@ document.addEventListener("DOMContentLoaded", () => {
     hiddenField.value = Array.from(globalSet).join(',');
 
     // Antes de enviar, leer directamente de localStorage y volcar TODO al campo oculto
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', (e) => {
         const finalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
         hiddenField.value = Array.from(finalSet).join(',');
-        // Opcional: limpiar después de guardar
-        // localStorage.removeItem(STORAGE_KEY);
     });
 });
 </script>
-
-
-
 
 </body>
 </html>

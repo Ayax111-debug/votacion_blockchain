@@ -7,25 +7,34 @@
 </head>
 <body class="bg-light">
     <div class="container mt-4">
-    <h4>Editar candidato</h4>
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                {{ form.nombre.label_tag }} {{ form.nombre }}
+        <div class="row">
+            <div class="col-md-8">
+                <h2>Editar Candidato: {{ persona.nombre }}</h2>
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <div class="form-group mb-3">
+                        <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="{{ form.foto_url.id_for_label }}" class="form-label">URL de Foto</label>
+                        {{ form.foto_url }}
+                        {% if form.foto_url.errors %}<div class="invalid-feedback d-block">{{ form.foto_url.errors }}</div>{% endif %}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.es_votante }} <label for="{{ form.es_votante.id_for_label }}" class="form-check-label">{{ form.es_votante.label }}</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.es_candidato }} <label for="{{ form.es_candidato.id_for_label }}" class="form-check-label">{{ form.es_candidato.label }}</label>
+                    </div>
+                    <div class="d-grid gap-2 d-sm-flex">
+                        <button type="submit" class="btn btn-success btn-lg">Guardar Cambios</button>
+                        <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+                    </div>
+                </form>
             </div>
-            <div class="mb-3">
-                {{ form.foto_url.label_tag }} {{ form.foto_url }}
-            </div>
-            <div class="form-check mb-3">
-                {{ form.es_votante }} {{ form.es_votante.label_tag }}
-            </div>
-            <div class="form-check mb-3">
-                {{ form.es_candidato }} {{ form.es_candidato.label_tag }}
-            </div>
-            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
-        </form>
+        </div>
     </div>
-
 </body>
 </html>

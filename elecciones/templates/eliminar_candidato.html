@@ -7,12 +7,24 @@
 </head>
 <body class="bg-light">
     <div class="container mt-4">
-        <h4>¿Estás seguro que deseas desactivar a {{ persona.nombre }} como candidato?</h4>
-        <form method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-warning">Desactivar</button>
-            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
-        </form>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Desactivar Candidato</h5>
+                        <p class="card-text">¿Estás seguro de que deseas desactivar a <strong>{{ persona.nombre }}</strong> como candidato?</p>
+                        <p class="text-muted"><small>Esta acción no elimina el votante, solo lo retira como candidato.</small></p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="d-grid gap-2 d-sm-flex">
+                                <button type="submit" class="btn btn-danger btn-lg">Confirmar Desactivación</button>
+                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

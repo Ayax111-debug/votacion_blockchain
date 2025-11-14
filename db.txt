@@ -1,0 +1,123 @@
+// =====================================
+// APP DE VOTACIONES ANÓNIMAS (Versión mejorada)
+// =====================================
+
+// =====================================
+// ENTIDAD BASE: PERSONA
+// =====================================
+
+Table Persona {
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Identificador único de persona']
+  nombre varchar(255) [not null]
+  email varchar(255) [unique, not null]
+  rut varchar(20) [unique, not null]
+  password_hash varchar(255) [not null, note: 'Hash seguro de contraseña']
+  foto_url varchar(255) [null]
+  created_at timestamptz [default: `now()`]
+  
+  indexes {
+    email
+    rut
+  }
+}
+
+// =====================================
+// ADMINISTRADOR
+// =====================================
+
+Table Administrador {
+  id uuid [pk, default: `gen_random_uuid()`]
+  id_persona uuid [not null, ref: > Persona.id, unique, note: 'La persona que actúa como administrador']
+  created_at timestamptz [default: `now()`]
+}
+
+// =====================================
+// EVENTO DE ELECCIÓN
+// =====================================
+
+Table EventoEleccion {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nombre varchar(255) [not null]
+  fecha_inicio timestamptz [not null]
+  fecha_termino timestamptz [not null]
+  id_administrador uuid [not null, ref: > Administrador.id]
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  indexes {
+    id_administrador
+  }
+}
+
+// =====================================
+// PARTICIPACIÓN EN ELECCIÓN (VOTANTES)
+// =====================================
+
+Table ParticipacionEleccion {
+  id_evento_eleccion uuid [pk, ref: > EventoEleccion.id]
+  id_persona uuid [pk, ref: > Persona.id]
+  ha_votado boolean [default: false, note: 'Evita doble voto']
+  
+  indexes {
+    (id_evento_eleccion, ha_votado)
+  }
+}
+
+// =====================================
+// CANDIDATURAS
+// =====================================
+
+Table Candidatura {
+  id_evento_eleccion uuid [pk, ref: > EventoEleccion.id]
+  id_persona uuid [pk, ref: > Persona.id]
+  propuesta text [null, note: 'Opcional: descripción o plan del candidato']
+  
+  indexes {
+    id_persona
+  }
+}
+
+// =====================================
+// VOTOS (ANÓNIMOS)
+// =====================================
+
+Table Voto {
+  id uuid [pk, default: `gen_random_uuid()`]
+  id_evento_eleccion uuid [not null]
+  id_persona_candidato uuid [not null, note: 'Persona por la que se votó']
+  time_stamp timestamptz [default: `now()`]
+  
+  indexes {
+    (id_evento_eleccion, id_persona_candidato)
+  }
+}
+
+// =====================================
+// RESULTADOS
+// =====================================
+
+Table Resultado {
+  id uuid [pk, default: `gen_random_uuid()`]
+  id_evento_eleccion uuid [not null]
+  id_persona_candidato uuid [not null]
+  conteo_votos int [default: 0]
+  updated_at timestamptz [default: `now()`]
+  
+  indexes {
+    (id_evento_eleccion, id_persona_candidato) [unique]
+  }
+}
+
+// =====================================
+// RESTRICCIONES LÓGICAS
+// =====================================
+
+// Asegura que los votos solo vayan a candidatos válidos
+Ref Voto_Candidatura_FK {
+  Voto.(id_evento_eleccion, id_persona_candidato) > Candidatura.(id_evento_eleccion, id_persona)
+}
+
+// Asegura que los resultados solo existan para candidatos válidos
+Ref Resultado_Candidatura_FK {
+  Resultado.(id_evento_eleccion, id_persona_candidato) > Candidatura.(id_evento_eleccion, id_persona)
+}
