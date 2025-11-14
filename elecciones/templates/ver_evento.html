@@ -10,11 +10,16 @@
 </head>
 <body class="bg-light">
     <div class="container mt-4">
-        <h3>Detalles del Evento: {{ evento.nombre }}</h3>
-        <p><strong>Inicio:</strong> {{ evento.fecha_inicio|date:"d M Y H:i" }}</p>
-        <p><strong>Término:</strong> {{ evento.fecha_termino|date:"d M Y H:i" }}</p>
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2>Detalles del Evento: {{ evento.nombre }}</h2>
+                <p class="text-muted">Estado: <strong>{{ evento.estado }}</strong></p>
+                <p><strong>Inicio:</strong> {{ evento.fecha_inicio|date:"d/m/Y H:i" }}</p>
+                <p><strong>Término:</strong> {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
 
-        <h5 class="mt-4">Candidatos Asignados</h5>
+        <h5 class="mt-4 mb-3">Candidatos Asignados</h5>
         <table class="table table-bordered bg-white">
             <thead>
                 <tr>
@@ -34,7 +39,13 @@
                         {% endif %}
                     </td>
                     <td>{{ c.persona.nombre }}</td>
-                    <td>{{ c.fecha_registro|date:"d M Y H:i" }}</td>
+                    <td>
+                        {% if c.fecha_registro %}
+                            {{ c.fecha_registro|date:"d M Y H:i" }}
+                        {% else %}
+                            <span class="text-muted">Sin fecha</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="text-center text-muted">No hay candidatos asignados</td></tr>
@@ -42,7 +53,10 @@
             </tbody>
         </table>
 
-        <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
+        <div class="mt-4">
+            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success">Editar Candidatos</a>
+            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
+        </div>
     </div>
 </body>
 </html>

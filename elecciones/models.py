@@ -1,45 +1,47 @@
 from django.db import models
 from django.utils import timezone
-import secrets
-import string
 import uuid
-def rut_temporal():
-    """Genera un RUT temporal único para registros antiguos"""
-    return str(uuid.uuid4())[:12]  # 12 caracteres únicos
 
-def generar_clave_robusta(longitud=12):
-    """Genera una clave robusta con letras, números y símbolos"""
-    caracteres = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
-    return ''.join(secrets.choice(caracteres) for _ in range(longitud))
-                   
+
 class Persona(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    nombre = models.CharField(max_length=100)
-    rut = models.CharField(max_length=12, unique=True, null=True, blank=True)
+    nombre = models.CharField(max_length=255)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    rut = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    password_hash = models.CharField(max_length=255, null=True, blank=True)
     clave = models.CharField(max_length=50, null=True, blank=True)
     es_votante = models.BooleanField(default=False)
-    es_candidato = models.BooleanField(default=False)   # <-- nuevo campo
-    foto_url = models.URLField(blank=True, null=True)   # <-- nuevo campo
+    es_candidato = models.BooleanField(default=False)
+    foto_url = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)  
 
     def __str__(self):
-        return f"{self.nombre} ({self.rut})"
+        return f"{self.nombre} <{self.email}>"
 
     @staticmethod
     def generar_clave_robusta(longitud=12):
-        """Genera una clave robusta con letras, números y símbolos"""
+        import secrets, string
         caracteres = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
         return ''.join(secrets.choice(caracteres) for _ in range(longitud))
-    
-# elecciones/models.py
+
+
+class Administrador(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    persona = models.OneToOneField(Persona, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Administrador: {self.persona.nombre}"
+
+
 class EventoEleccion(models.Model):
-    id = models.CharField(primary_key=True, max_length=36, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=255)
     fecha_inicio = models.DateTimeField()
     fecha_termino = models.DateTimeField()
-    id_administrador = models.CharField(max_length=36)
-    activo = models.BooleanField(default=True)  # ← nuevo campo
+    administrador = models.ForeignKey(Administrador, on_delete=models.CASCADE, null=True, blank=True)
+    id_administrador = models.CharField(max_length=36, null=True, blank=True)
+    activo = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -52,16 +54,57 @@ class EventoEleccion(models.Model):
             return "Futuro"
         else:
             return "Terminado"
-    
-    def __str__(self):
-        return self
-    
 
-class CandidatoEvento(models.Model):
-    id = models.CharField(primary_key=True, max_length=36, editable=False)
-    persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    def __str__(self):
+        return self.nombre
+
+
+class ParticipacionEleccion(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     evento = models.ForeignKey(EventoEleccion, on_delete=models.CASCADE)
-    fecha_registro = models.DateTimeField(auto_now_add=True)
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    ha_votado = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (('evento', 'persona'),)
 
     def __str__(self):
         return f"{self.persona.nombre} en {self.evento.nombre}"
+
+
+class Candidatura(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    evento = models.ForeignKey(EventoEleccion, on_delete=models.CASCADE)
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    propuesta = models.TextField(null=True, blank=True)
+    fecha_registro = models.DateTimeField(auto_now_add=True, null=True)
+
+    class Meta:
+        unique_together = (('evento', 'persona'),)
+
+    def __str__(self):
+        return f"Candidatura: {self.persona.nombre} en {self.evento.nombre}"
+
+
+class Voto(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    evento = models.ForeignKey(EventoEleccion, on_delete=models.CASCADE)
+    persona_candidato = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='votos_recibidos')
+    time_stamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Voto {self.id} -> {self.persona_candidato.nombre}"
+
+
+class Resultado(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    evento = models.ForeignKey(EventoEleccion, on_delete=models.CASCADE)
+    persona_candidato = models.ForeignKey(Persona, on_delete=models.CASCADE)
+    conteo_votos = models.IntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (('evento', 'persona_candidato'),)
+
+    def __str__(self):
+        return f"Resultado: {self.persona_candidato.nombre} ({self.conteo_votos})"

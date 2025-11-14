@@ -5,14 +5,34 @@
     <title>Desactivar Evento</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Desactivar Evento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
 <body class="bg-light">
     <div class="container mt-4">
-        <h4>¿Estás seguro que deseas desactivar el evento "{{ evento.nombre }}"?</h4>
-        <form method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-warning">Desactivar</button>
-            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
-        </form>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Desactivar Evento</h5>
+                        <p class="card-text">¿Estás seguro de que deseas desactivar <strong>{{ evento.nombre }}</strong>?</p>
+                        <p class="text-muted"><small>Esta acción no elimina los datos, solo hace que el evento no sea visible.</small></p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="d-grid gap-2 d-sm-flex">
+                                <button type="submit" class="btn btn-warning btn-lg">Confirmar Desactivación</button>
+                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
+</html>
 </html>

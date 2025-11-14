@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import Persona, EventoEleccion, CandidatoEvento
+from .models import Persona, EventoEleccion, Candidatura, Administrador
 from .forms import LoginForm, CandidatoForm, EditarPersonaForm, EventoEleccionForm,LoginForm_votante
 import uuid
 from django.utils import timezone
@@ -10,13 +10,57 @@ from django.core.paginator import Paginator
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .utils import requiere_votante_sesion
-from django.shortcuts import render, get_object_or_404
-from .models import Persona
 from uuid import UUID
 
 def votar_evento(request, evento_id):
-    evento = get_object_or_404(EventoEleccion, id=evento_id)
-    candidatos = CandidatoEvento.objects.filter(evento=evento)
+    # Avoid instantiating the full EventoEleccion model to prevent
+    # DB-driver datetime->string conversion issues that break Django's
+    # timezone utilities. Load only needed fields and normalize datetimes.
+    ev = EventoEleccion.objects.filter(id=evento_id).values('id', 'nombre', 'fecha_inicio', 'fecha_termino').first()
+    if not ev:
+        from django.http import Http404
+        raise Http404("Evento no encontrado")
+
+    from datetime import datetime
+    fi = ev.get('fecha_inicio')
+    ft = ev.get('fecha_termino')
+    if isinstance(fi, str):
+        try:
+            fi = datetime.fromisoformat(fi)
+        except Exception:
+            try:
+                fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                fi = None
+    if isinstance(ft, str):
+        try:
+            ft = datetime.fromisoformat(ft)
+        except Exception:
+            try:
+                ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                ft = None
+
+    evento = {
+        'id': ev['id'],
+        'nombre': ev['nombre'],
+        'fecha_inicio': fi,
+        'fecha_termino': ft,
+    }
+
+    # Avoid instantiating Candidatura model objects (which include datetime
+    # fields) — fetch only persona info needed for the template to prevent
+    # DB-driver datetime->string conversion issues.
+    candidatos_qs = Candidatura.objects.filter(evento_id=evento_id).values('persona__id', 'persona__nombre', 'persona__foto_url')
+    candidatos = []
+    for c in candidatos_qs:
+        candidatos.append({
+            'persona': {
+                'id': c.get('persona__id'),
+                'nombre': c.get('persona__nombre'),
+                'foto_url': c.get('persona__foto_url'),
+            }
+        })
 
     if request.method == "POST":
         candidato_id = request.POST.get("candidato")
@@ -32,14 +76,52 @@ def votar_evento(request, evento_id):
 @requiere_votante_sesion
 def panel_usuario(request):
     votante_id = request.session.get("votante_id")
-    persona = get_object_or_404(Persona, id=votante_id)
 
-    eventos = EventoEleccion.objects.filter(activo=True)
+    # Retrieve only the fields we need for the persona to avoid instantiating
+    # a full model which may trigger datetime conversions from the DB driver.
+    persona_data = Persona.objects.filter(id=votante_id).values('id', 'nombre', 'foto_url').first()
+    if not persona_data:
+        # Keep the same behavior as get_object_or_404 when persona not found
+        from django.http import Http404
+        raise Http404("Persona no encontrada")
+
+    # Load eventos but be defensive: some DB drivers may return DATETIME as
+    # strings. Normalize to Python datetimes so template date filters work.
+    eventos_raw = list(EventoEleccion.objects.filter(activo=True).values('id', 'nombre', 'fecha_inicio', 'fecha_termino'))
+    from datetime import datetime
+
+    eventos = []
+    for ev in eventos_raw:
+        fi = ev.get('fecha_inicio')
+        ft = ev.get('fecha_termino')
+        # If the driver returned strings, parse them to datetimes
+        if isinstance(fi, str):
+            try:
+                fi = datetime.fromisoformat(fi)
+            except Exception:
+                try:
+                    fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    fi = None
+        if isinstance(ft, str):
+            try:
+                ft = datetime.fromisoformat(ft)
+            except Exception:
+                try:
+                    ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    ft = None
+
+        eventos.append({
+            'id': ev['id'],
+            'nombre': ev['nombre'],
+            'fecha_inicio': fi,
+            'fecha_termino': ft,
+        })
 
     return render(request, "panel_usuario.html", {
-        "persona": persona,
+        "persona": persona_data,
         "eventos": eventos,
-        # "votos": []  # aún no implementado
     })
 
 
@@ -57,13 +139,16 @@ def login_votante(request):
         rut = form.cleaned_data["rut"]
         clave = form.cleaned_data["clave"]
 
-        try:
-            persona = Persona.objects.get(rut=rut, clave=clave, es_votante=True)
-            # Guardamos el ID en sesión
-            request.session["votante_id"] = str(persona.id)
+        # Use values() to avoid instantiating full model objects (and
+        # therefore avoid converting DateTime fields which some DB drivers
+        # may return as strings and cause timezone.make_aware errors).
+        persona_data = Persona.objects.filter(rut=rut, clave=clave, es_votante=True).values('id', 'nombre').first()
+
+        if persona_data:
+            request.session["votante_id"] = str(persona_data['id'])
             messages.success(request, "Ingreso exitoso.")
             return redirect("panel_usuario")
-        except Persona.DoesNotExist:
+        else:
             error = "RUT o clave incorrectos"
 
     return render(request, "login_votante.html", {"form": form, "error": error})
@@ -188,7 +273,18 @@ def crear_evento(request):
         form = EventoEleccionForm(request.POST)
         if form.is_valid():
             evento = form.save(commit=False)
-            evento.id = str(uuid.uuid4())
+            # Ensure there is an Administrador instance; if none, create one from the current user
+            admin = Administrador.objects.first()
+            if not admin:
+                persona_admin = Persona.objects.create(
+                    nombre=(request.user.get_full_name() or request.user.username),
+                    email=(getattr(request.user, 'email', f'user{request.user.id}@local')),
+                    rut=str(request.user.id),
+                    password_hash=''
+                )
+                admin = Administrador.objects.create(persona=persona_admin)
+
+            evento.administrador = admin
             evento.id_administrador = str(request.user.id)
             evento.save()
             messages.success(request, f'Evento "{evento.nombre}" creado exitosamente.')
@@ -200,10 +296,15 @@ def crear_evento(request):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def asignar_candidatos(request, evento_id):
-    evento = get_object_or_404(EventoEleccion, id=evento_id)
-    votantes = Persona.objects.filter(es_votante=True).order_by('nombre')
+    try:
+        evento = get_object_or_404(EventoEleccion, id=evento_id)
+    except:
+        evento = get_object_or_404(EventoEleccion, id=str(evento_id))
+    # Only select the fields we need to avoid forcing conversion of datetime
+    # fields at the DB driver level (which may return strings in some setups).
+    votantes_qs = Persona.objects.filter(es_votante=True).order_by('nombre').values('id', 'nombre', 'email', 'es_candidato')
 
-    paginator = Paginator(votantes, 10)
+    paginator = Paginator(list(votantes_qs), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -211,11 +312,10 @@ def asignar_candidatos(request, evento_id):
         ids_str = request.POST.get('candidatos_globales', '')
         seleccionados = [s for s in ids_str.split(',') if s] if ids_str else []
 
-        CandidatoEvento.objects.filter(evento=evento).delete()
+        Candidatura.objects.filter(evento=evento).delete()
 
         for persona_id in seleccionados:
-            CandidatoEvento.objects.create(
-                id=str(uuid.uuid4()),
+            Candidatura.objects.create(
                 evento=evento,
                 persona_id=persona_id
             )
@@ -223,9 +323,7 @@ def asignar_candidatos(request, evento_id):
         messages.success(request, 'Candidatos actualizados correctamente.')
         return redirect('panel_admin')
 
-    candidatos_actuales = list(
-    CandidatoEvento.objects.filter(evento=evento).values_list('persona_id', flat=True)
-)
+    candidatos_actuales = list(Candidatura.objects.filter(evento=evento).values_list('persona_id', flat=True))
 
     return render(request, 'asignar_candidatos.html', {
         'evento': evento,
@@ -236,8 +334,76 @@ def asignar_candidatos(request, evento_id):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def ver_evento(request, evento_id):
-    evento = get_object_or_404(EventoEleccion, id=evento_id)
-    candidatos = CandidatoEvento.objects.filter(evento=evento).select_related('persona').order_by('fecha_registro')
+    # Load only needed event fields and normalize datetimes to avoid
+    # DB-driver datetime->string conversion issues.
+    ev = EventoEleccion.objects.filter(id=evento_id).values('id', 'nombre', 'fecha_inicio', 'fecha_termino').first()
+    if not ev:
+        from django.http import Http404
+        raise Http404('Evento no encontrado')
+
+    from datetime import datetime
+    fi = ev.get('fecha_inicio')
+    ft = ev.get('fecha_termino')
+    if isinstance(fi, str):
+        try:
+            fi = datetime.fromisoformat(fi)
+        except Exception:
+            try:
+                fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                fi = None
+    if isinstance(ft, str):
+        try:
+            ft = datetime.fromisoformat(ft)
+        except Exception:
+            try:
+                ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                ft = None
+
+    # compute estado similar to EventoEleccion.estado property
+    ahora = timezone.now()
+    estado = 'Desconocido'
+    try:
+        if fi is not None and ft is not None:
+            if fi <= ahora <= ft:
+                estado = 'En curso'
+            elif ahora < fi:
+                estado = 'Futuro'
+            else:
+                estado = 'Terminado'
+    except Exception:
+        estado = 'Desconocido'
+
+    evento = {
+        'id': ev['id'],
+        'nombre': ev['nombre'],
+        'fecha_inicio': fi,
+        'fecha_termino': ft,
+        'estado': estado,
+    }
+
+    # Build candidatos as lightweight dicts including fecha_registro
+    candidatos_qs = Candidatura.objects.filter(evento_id=evento_id).values('persona__id', 'persona__nombre', 'persona__foto_url', 'fecha_registro')
+    candidatos = []
+    for c in candidatos_qs:
+        fr = c.get('fecha_registro')
+        if isinstance(fr, str):
+            try:
+                fr = datetime.fromisoformat(fr)
+            except Exception:
+                try:
+                    fr = datetime.strptime(fr, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    fr = None
+        candidatos.append({
+            'persona': {
+                'id': c.get('persona__id'),
+                'nombre': c.get('persona__nombre'),
+                'foto_url': c.get('persona__foto_url'),
+            },
+            'fecha_registro': fr,
+        })
 
     return render(request, 'ver_evento.html', {
         'evento': evento,

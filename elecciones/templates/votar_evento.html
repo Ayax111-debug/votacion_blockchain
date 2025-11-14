@@ -12,9 +12,12 @@
             {% csrf_token %}
             <div class="list-group mb-3">
                 {% for candidato in candidatos %}
-                    <label class="list-group-item">
-                        <input type="radio" name="candidato" value="{{ candidato.id }}" required>
-                        {{ candidato.persona.nombre }}
+                    <label class="list-group-item d-flex align-items-center">
+                        <input type="radio" name="candidato" value="{{ candidato.persona.id }}" required class="me-3">
+                        {% if candidato.persona.foto_url %}
+                            <img src="{{ candidato.persona.foto_url }}" alt="{{ candidato.persona.nombre }}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;margin-right:8px;">
+                        {% endif %}
+                        <span>{{ candidato.persona.nombre }}</span>
                     </label>
                 {% empty %}
                     <p class="text-muted">No hay candidatos disponibles.</p>
