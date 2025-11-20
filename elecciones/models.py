@@ -90,7 +90,29 @@ class Voto(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     evento = models.ForeignKey(EventoEleccion, on_delete=models.CASCADE)
     persona_candidato = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='votos_recibidos')
+    # Persona que emitió el voto (votante)
+    persona_votante = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True, blank=True, related_name='votos_emitidos')
     time_stamp = models.DateTimeField(auto_now_add=True)
+    
+    # Blockchain fields
+    commitment = models.CharField(max_length=66, null=True, blank=True, help_text="Keccak256 hash commitment of the vote")
+    tx_hash = models.CharField(max_length=66, null=True, blank=True, help_text="Transaction hash on blockchain")
+    # Address that submitted the commitment (if available)
+    commitment_sender = models.CharField(max_length=42, null=True, blank=True, help_text="Address that submitted the commitment on-chain")
+    block_number = models.BigIntegerField(null=True, blank=True, help_text="Block number where commitment was stored")
+    onchain_status = models.CharField(
+        max_length=20,
+        default='pending',
+        choices=[
+            ('pending', 'Pending'), 
+            ('sent', 'Sent'), 
+            ('success', 'Success'),
+            ('exists', 'Exists'),
+            ('confirmed', 'Confirmed'), 
+            ('failed', 'Failed')
+        ],
+        help_text="Status of blockchain submission"
+    )
 
     def __str__(self):
         return f"Voto {self.id} -> {self.persona_candidato.nombre}"

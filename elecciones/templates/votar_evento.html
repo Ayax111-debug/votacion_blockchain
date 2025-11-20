@@ -27,5 +27,51 @@
             <a href="{% url 'panel_usuario' %}" class="btn btn-secondary">Volver</a>
         </form>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+        const loadingMessage = document.getElementById('loading-message');
+        loadingMessage.style.display = 'none'; // Hide loading message initially
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const formData = new FormData(form);
+            loadingMessage.style.display = 'block'; // Show loading message
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to submit vote');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Redirect to the event-specific confirmation page
+                    window.location.href = "{% url 'voto_confirmado' evento.id %}";
+                } else {
+                    throw new Error('Vote submission failed');
+                }
+            } catch (error) {
+                console.error('Error submitting vote:', error);
+                alert('An error occurred while submitting your vote. Please try again.');
+                loadingMessage.style.display = 'none';
+            }
+        });
+    });
+    </script>
+
+    <div id="loading-message">
+        <p>Processing your vote, please wait...</p>
+    </div>
 </body>
 </html>
