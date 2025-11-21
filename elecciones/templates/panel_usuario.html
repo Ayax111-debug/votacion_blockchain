@@ -51,7 +51,23 @@
 
         <!-- Historial de votaciones -->
         <h5 class="mt-4 mb-3">Historial de votaciones</h5>
-        <p class="text-muted">El historial de votaciones estará disponible próximamente.</p>
+        {% if historial and historial|length > 0 %}
+            <div class="list-group mb-3">
+                {% for he in historial %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ he.nombre }}</strong><br>
+                            <small class="text-muted">{{ he.fecha_inicio|date:"d/m/Y H:i" }} - {{ he.fecha_termino|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        <div>
+                            <a href="{% url 'resultados_evento' he.id %}" class="btn btn-outline-primary">Resultados</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">Aún no tienes votos registrados.</p>
+        {% endif %}
         
 
         <!-- Botón de logout -->
