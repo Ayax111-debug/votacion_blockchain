@@ -1,6 +1,87 @@
 from django import forms
 from .models import Persona, EventoEleccion
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+
+class AgregarUsuarioForm(forms.ModelForm):
+    """Formulario para agregar nuevos usuarios con foto"""
+    foto = forms.ImageField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*',
+            'id': 'foto-input'
+        }),
+        help_text="Selecciona una imagen (JPG, PNG, GIF). Máximo 5MB."
+    )
+    
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'email', 'rut', 'foto']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nombre completo'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'correo@ejemplo.com'
+            }),
+            'rut': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '12345678-9'
+            })
+        }
+    
+    def clean_foto(self):
+        foto = self.cleaned_data.get('foto')
+        if foto:
+            # Validar tamaño del archivo (5MB max)
+            if foto.size > 5 * 1024 * 1024:
+                raise ValidationError("El archivo es demasiado grande. Máximo 5MB.")
+            
+            # Validar tipo de archivo
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+            if foto.content_type not in allowed_types:
+                raise ValidationError("Tipo de archivo no válido. Use JPG, PNG o GIF.")
+        
+        return foto
+
+
+class EditarUsuarioForm(forms.ModelForm):
+    """Formulario para editar usuarios existentes"""
+    foto = forms.ImageField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        }),
+        help_text="Selecciona una nueva imagen para reemplazar la actual"
+    )
+    
+    class Meta:
+        model = Persona
+        fields = ['nombre', 'email', 'rut', 'es_votante', 'es_candidato', 'foto']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'rut': forms.TextInput(attrs={'class': 'form-control'}),
+            'es_votante': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'es_candidato': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+    
+    def clean_foto(self):
+        foto = self.cleaned_data.get('foto')
+        if foto:
+            if foto.size > 5 * 1024 * 1024:
+                raise ValidationError("El archivo es demasiado grande. Máximo 5MB.")
+            
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+            if foto.content_type not in allowed_types:
+                raise ValidationError("Tipo de archivo no válido. Use JPG, PNG o GIF.")
+        
+        return foto
 
 
 class CandidatoForm(forms.Form):
@@ -23,7 +104,7 @@ class CandidatoForm(forms.Form):
 class EditarPersonaForm(forms.ModelForm):
     class Meta:
         model = Persona
-        fields = ['nombre', 'foto_url', 'es_votante', 'es_candidato']
+        fields = ['nombre', 'es_votante', 'es_candidato']
 
 
 class LoginForm(forms.Form):
