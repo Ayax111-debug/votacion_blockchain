@@ -16,18 +16,50 @@
         </div>
 
         <!-- Resumen -->
-        <p class="text-muted">
-            Total de eventos: {{ eventos|length }} |
-            {% if eventos %}
-                Último evento creado: {{ eventos.0.nombre }} ({{ eventos.0.created_at|date:"d M Y" }})
-            {% endif %}
-        </p>
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ eventos|length }}</h5>
+                        <p class="card-text small">Eventos Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ total_votantes }}</h5>
+                        <p class="card-text small">Votantes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ total_candidatos }}</h5>
+                        <p class="card-text small">Candidatos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">{{ total_candidaturas }}</h5>
+                        <p class="card-text small">Candidaturas Activas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Sección de eventos -->
         <!-- Sección de eventos -->
         <div class="mb-5">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4>Eventos de Elección</h4>
-                <a href="{% url 'crear_evento' %}" class="btn btn-primary">+ Crear Nuevo Evento</a>
+                <div>
+                    <a href="{% url 'agregar_usuario' %}" class="btn btn-success me-2">+ Agregar Usuario</a>
+                    <a href="{% url 'crear_evento' %}" class="btn btn-primary">+ Crear Nuevo Evento</a>
+                </div>
             </div>
 
             <!-- Botones de filtro -->
@@ -44,27 +76,71 @@
                         <th>Nombre</th>
                         <th>Fechas</th>
                         <th>Estado</th>
+                        <th>Configuración</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for evento in eventos %}
+                    {% for item in eventos_con_stats %}
+                    {% with evento=item.evento %}
                     <tr>
                         <td>{{ evento.nombre }}</td>
                         <td>
-                            {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                            {% if evento.fecha_inicio and evento.fecha_termino %}
+                                {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                            {% else %}
+                                <span class="text-muted">Fechas por configurar</span>
+                            {% endif %}
                         </td>
                         <td>
-                            <span class="badge 
-                                {% if evento.estado == 'En curso' %}bg-success
-                                {% elif evento.estado == 'Futuro' %}bg-primary
-                                {% else %}bg-secondary{% endif %}">
-                                {{ evento.estado }}
+                            <span class="badge {% if evento.activo %}bg-success{% else %}bg-secondary{% endif %}">
+                                {% if evento.activo %}Activo{% else %}Inactivo{% endif %}
                             </span>
                         </td>
                         <td>
-                            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success btn-sm">Asignar Candidatos</a>
-                            <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info btn-sm">Ver Detalles</a>
+                            <!-- Estado de configuración -->
+                            <div class="small">
+                                <div class="mb-1">
+                                    <i class="bi bi-people{% if item.participantes_count > 0 %}-fill text-success{% else %} text-muted{% endif %}"></i>
+                                    {{ item.participantes_count }} Participante{{ item.participantes_count|pluralize }}
+                                </div>
+                                <div class="mb-1">
+                                    <i class="bi bi-person-badge{% if item.candidatos_count > 0 %}-fill text-success{% else %} text-muted{% endif %}"></i>
+                                    {{ item.candidatos_count }} Candidato{{ item.candidatos_count|pluralize }}
+                                </div>
+                                {% if item.configuracion_completa %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Configurado</span>
+                                {% else %}
+                                    <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> Incompleto</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <!-- Botones en orden lógico -->
+                            <div class="btn-group-vertical btn-group-sm d-grid gap-1">
+                                <!-- Paso 1: Participantes -->
+                                <a href="{% url 'asignar_participantes' evento.id %}" 
+                                   class="btn {% if item.participantes_count > 0 %}btn-outline-primary{% else %}btn-primary{% endif %} btn-sm">
+                                    <i class="bi bi-people"></i> 
+                                    {% if item.participantes_count > 0 %}Gestionar{% else %}1. Asignar{% endif %} Participantes
+                                </a>
+                                
+                                <!-- Paso 2: Candidatos -->
+                                <a href="{% url 'asignar_candidatos' evento.id %}" 
+                                   class="btn {% if item.candidatos_count > 0 %}btn-outline-success{% else %}btn-success{% endif %} btn-sm
+                                         {% if item.participantes_count == 0 %}disabled{% endif %}">
+                                    <i class="bi bi-person-badge"></i> 
+                                    {% if item.candidatos_count > 0 %}Gestionar{% else %}2. Elegir{% endif %} Candidatos
+                                </a>
+                                
+                                <!-- Otros botones -->
+                                <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info btn-sm">
+                                    <i class="bi bi-eye"></i> Ver Detalles
+                                </a>
+                            </div>
+                            
+                            <!-- Botones de activación/desactivación -->
+                            <div class="mt-2">
 
                             {% if evento.activo %}
                                 <form method="post" action="{% url 'desactivar_evento' evento.id %}" style="display:inline;">
@@ -74,10 +150,12 @@
                             {% else %}
                                 <a href="{% url 'activar_evento' evento.id %}" class="btn btn-outline-success btn-sm">Activar</a>
                             {% endif %}
+                            </div>
                         </td>
                     </tr>
+                    {% endwith %}
                     {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted">No hay eventos aún</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted">No hay eventos aún</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

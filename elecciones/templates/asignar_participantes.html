@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asignar Participantes - {{ evento.nombre }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .user-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: white;
+        }
+        .user-photo {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        .participante-actual {
+            background-color: #e8f5e8;
+            border-color: #28a745;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <!-- Información del evento y navegación -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h2><i class="bi bi-people"></i> Asignar Participantes</h2>
+                <p class="text-muted">Evento: <strong>{{ evento.nombre }}</strong></p>
+                <p class="text-muted">Fecha: {{ evento.fecha_inicio|date:"d/m/Y H:i" }} a {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
+                
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-lightbulb"></i> Proceso de configuración:</h6>
+                    <ol class="mb-0">
+                        <li><strong>Paso 1:</strong> Asignar participantes (quiénes pueden votar) ← <span class="badge bg-primary">Estás aquí</span></li>
+                        <li><strong>Paso 2:</strong> 
+                            {% if participantes_actuales|length > 0 %}
+                                <a href="{% url 'asignar_candidatos' evento.id %}" class="text-decoration-none">Elegir candidatos de entre los participantes</a>
+                            {% else %}
+                                Elegir candidatos de entre los participantes <small class="text-muted">(necesitas participantes primero)</small>
+                            {% endif %}
+                        </li>
+                    </ol>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'panel_admin' %}" class="btn btn-secondary">← Volver al Panel</a>
+                {% if participantes_actuales|length > 0 %}
+                    <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success">Siguiente: Candidatos →</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estadísticas rápidas -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ participantes_actuales|length }}</h5>
+                        <p class="card-text small">Participantes Asignados</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ candidatos_count }}</h5>
+                        <p class="card-text small">Candidatos Elegidos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">{{ usuarios_disponibles|length }}</h5>
+                        <p class="card-text small">Usuarios Disponibles</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">Asignar Participantes a: {{ evento.nombre }}</h3>
+                <p class="text-muted mb-0">
+                    {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                </p>
+            </div>
+            <div class="card-body">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="row">
+                    <!-- Columna izquierda: Usuarios disponibles -->
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Usuarios Disponibles</h5>
+                        {% if usuarios_disponibles %}
+                            {% for persona in usuarios_disponibles %}
+                                <div class="user-item">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            {% if persona.foto_display_url %}
+                                                <img src="{{ persona.foto_display_url }}" alt="{{ persona.nombre }}" class="user-photo me-3">
+                                            {% else %}
+                                                <div class="user-photo me-3 bg-secondary d-flex align-items-center justify-content-center text-white">
+                                                    {{ persona.nombre|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ persona.nombre }}</strong><br>
+                                                <small class="text-muted">{{ persona.email }}</small>
+                                            </div>
+                                        </div>
+                                        <form method="post" action="{% url 'asignar_participantes' evento.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="persona_id" value="{{ persona.id }}">
+                                            <input type="hidden" name="action" value="add">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                + Agregar
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No hay usuarios disponibles para agregar.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Columna derecha: Participantes actuales -->
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Participantes Asignados ({{ participantes_actuales|length }})</h5>
+                        {% if participantes_actuales %}
+                            {% for participacion in participantes_actuales %}
+                                <div class="user-item participante-actual">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            {% if participacion.persona__foto_url %}
+                                                <img src="{{ participacion.persona__foto_url }}" alt="{{ participacion.persona__nombre }}" class="user-photo me-3">
+                                            {% else %}
+                                                <div class="user-photo me-3 bg-success d-flex align-items-center justify-content-center text-white">
+                                                    {{ participacion.persona__nombre|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ participacion.persona__nombre }}</strong><br>
+                                                <small class="text-muted">{{ participacion.persona__email }}</small>
+                                                {% if participacion.ha_votado %}
+                                                    <br><small class="badge bg-warning">Ya votó</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% if not participacion.ha_votado %}
+                                            <form method="post" action="{% url 'asignar_participantes' evento.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="persona_id" value="{{ participacion.persona__id }}">
+                                                <input type="hidden" name="action" value="remove">
+                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                    - Quitar
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <small class="text-muted">No se puede quitar<br>(ya votó)</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No hay participantes asignados aún.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mt-4 border-top pt-3">
+                    <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
+                    <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info">Ver Detalles del Evento</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

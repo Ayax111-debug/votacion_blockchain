@@ -1,6 +1,17 @@
 from django.db import models
 from django.utils import timezone
 import uuid
+import os
+
+
+def upload_to_usuario(instance, filename):
+    """Genera ruta única para la foto del usuario"""
+    # Obtener extensión del archivo
+    ext = filename.split('.')[-1].lower()
+    # Generar nombre único usando UUID
+    filename = f"{instance.id}.{ext}"
+    # Retornar ruta completa
+    return os.path.join('images', 'usuarios', filename)
 
 
 class Persona(models.Model):
@@ -12,11 +23,29 @@ class Persona(models.Model):
     clave = models.CharField(max_length=50, null=True, blank=True)
     es_votante = models.BooleanField(default=False)
     es_candidato = models.BooleanField(default=False)
-    foto_url = models.CharField(max_length=255, null=True, blank=True)
+    # Campo para archivo de imagen
+    foto = models.ImageField(upload_to=upload_to_usuario, null=True, blank=True, help_text="Foto del usuario")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.nombre} <{self.email}>"
+    
+    @property
+    def foto_display_url(self):
+        """Retorna la URL de la foto a mostrar"""
+        if self.foto and self.foto.url:
+            return self.foto.url
+        else:
+            return None
+    
+    def delete_old_foto(self):
+        """Elimina archivo de foto anterior si existe"""
+        if self.foto:
+            try:
+                if os.path.isfile(self.foto.path):
+                    os.remove(self.foto.path)
+            except (ValueError, OSError):
+                pass
 
     @staticmethod
     def generar_clave_robusta(longitud=12):

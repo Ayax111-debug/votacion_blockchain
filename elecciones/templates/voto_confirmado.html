@@ -74,9 +74,22 @@
                         spinner.style.display = 'none';
                         actions.style.display = '';
                         successBox.style.display = '';
-                        successBox.textContent = 'Voto registrado en la blockchain. Serás redirigido al panel.';
-                        // After 2 seconds redirect to panel
-                        setTimeout(()=>{ window.location.href = '{% url "panel_usuario" %}'; }, 2000);
+                        
+                        // Countdown timer
+                        let seconds = 5;
+                        successBox.textContent = `Voto registrado en la blockchain. Serás redirigido al panel en ${seconds} segundos...`;
+                        
+                        const countdown = setInterval(() => {
+                            seconds--;
+                            if (seconds > 0) {
+                                successBox.textContent = `Voto registrado en la blockchain. Serás redirigido al panel en ${seconds} segundos...`;
+                            } else {
+                                clearInterval(countdown);
+                            }
+                        }, 1000);
+                        
+                        // After 5 seconds redirect to panel
+                        setTimeout(()=>{ window.location.href = '{% url "panel_usuario" %}'; }, 5000);
                         return true;
                     }
 

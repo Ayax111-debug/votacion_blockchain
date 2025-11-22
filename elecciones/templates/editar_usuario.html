@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Usuario</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .photo-preview {
+            max-width: 150px;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+        }
+        .photo-upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .photo-upload-area:hover {
+            border-color: #0d6efd;
+            background-color: #e7f3ff;
+        }
+        .photo-upload-area.dragover {
+            border-color: #0d6efd;
+            background-color: #e7f3ff;
+        }
+        .current-photo {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">Editar Usuario: {{ persona.nombre }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            <!-- Sección de Foto -->
+                            <div class="mb-4">
+                                <label class="form-label">Foto de Perfil</label>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        {% if persona.foto_display_url %}
+                                            <div class="mb-3">
+                                                <p class="text-muted">Foto actual:</p>
+                                                <img src="{{ persona.foto_display_url }}" alt="Foto actual" class="current-photo">
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <div class="photo-upload-area" id="photoUploadArea">
+                                            <div id="photoPreview" style="display: none;">
+                                                <img id="previewImg" src="" alt="Vista previa" class="photo-preview mb-2">
+                                                <br>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePhoto()">
+                                                    Eliminar nueva foto
+                                                </button>
+                                            </div>
+                                            <div id="uploadPrompt">
+                                                <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                                                <p class="mb-2">Arrastra una nueva foto aquí o</p>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('id_foto').click()">
+                                                    Seleccionar Archivo
+                                                </button>
+                                                <small class="text-muted d-block mt-2">
+                                                    JPG, PNG o GIF (máx. 5MB)<br>
+                                                    Dejar vacío para mantener la actual
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {{ form.foto }}
+                                        {% if form.foto.errors %}
+                                            {% for error in form.foto.errors %}
+                                                <div class="text-danger small mt-1">{{ error }}</div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre Completo *</label>
+                                            {{ form.nombre }}
+                                            {% if form.nombre.errors %}
+                                                {% for error in form.nombre.errors %}
+                                                    <div class="text-danger small">{{ error }}</div>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="{{ form.email.id_for_label }}" class="form-label">Email *</label>
+                                            {{ form.email }}
+                                            {% if form.email.errors %}
+                                                {% for error in form.email.errors %}
+                                                    <div class="text-danger small">{{ error }}</div>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.rut.id_for_label }}" class="form-label">RUT *</label>
+                                {{ form.rut }}
+                                {% if form.rut.errors %}
+                                    {% for error in form.rut.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Usuario *</label>
+                                <div class="form-check">
+                                    {{ form.es_votante }}
+                                    <label class="form-check-label" for="{{ form.es_votante.id_for_label }}">
+                                        Votante (puede participar en votaciones)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    {{ form.es_candidato }}
+                                    <label class="form-check-label" for="{{ form.es_candidato.id_for_label }}">
+                                        Candidato (puede ser elegido)
+                                    </label>
+                                </div>
+                                {% if form.es_votante.errors %}
+                                    {% for error in form.es_votante.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                                {% if form.es_candidato.errors %}
+                                    {% for error in form.es_candidato.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if form.non_field_errors %}
+                                {% for error in form.non_field_errors %}
+                                    <div class="alert alert-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Manejar la vista previa de la foto
+        const photoInput = document.getElementById('id_foto');
+        const uploadArea = document.getElementById('photoUploadArea');
+        const preview = document.getElementById('photoPreview');
+        const previewImg = document.getElementById('previewImg');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+
+        // Eventos para drag & drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Evento para selección manual de archivo
+        photoInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Validar tipo de archivo
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Solo se permiten archivos JPG, PNG o GIF');
+                return;
+            }
+
+            // Validar tamaño (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('El archivo debe ser menor a 5MB');
+                return;
+            }
+
+            // Crear vista previa
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+                uploadPrompt.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+
+            // Asignar archivo al input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            photoInput.files = dataTransfer.files;
+        }
+
+        function removePhoto() {
+            photoInput.value = '';
+            preview.style.display = 'none';
+            uploadPrompt.style.display = 'block';
+            previewImg.src = '';
+        }
+
+        // Ocultar el input de archivo original
+        photoInput.style.display = 'none';
+    </script>
+</body>
+</html>

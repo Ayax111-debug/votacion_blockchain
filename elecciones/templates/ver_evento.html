@@ -2,60 +2,286 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{{ evento.nombre }}</title>
+    <title>{{ evento.nombre }} - Detalles</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
+        .thumb { 
+            width: 50px; 
+            height: 50px; 
+            object-fit: cover; 
+            border-radius: 6px; 
+        }
+        .card-header h5 {
+            margin-bottom: 0;
+        }
+        .badge {
+            font-size: 0.75em;
+        }
     </style>
 </head>
 <body class="bg-light">
     <div class="container mt-4">
+        <!-- Encabezado con información del evento -->
         <div class="row mb-4">
             <div class="col-md-8">
-                <h2>Detalles del Evento: {{ evento.nombre }}</h2>
-                <p class="text-muted">Estado: <strong>{{ evento.estado }}</strong></p>
-                <p><strong>Inicio:</strong> {{ evento.fecha_inicio|date:"d/m/Y H:i" }}</p>
-                <p><strong>Término:</strong> {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
+                <h2><i class="bi bi-calendar-event"></i> {{ evento.nombre }}</h2>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Estado:</strong> 
+                            <span class="badge 
+                                {% if evento.estado == 'En curso' %}bg-success
+                                {% elif evento.estado == 'Futuro' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ evento.estado }}
+                            </span>
+                        </p>
+                        <p class="mb-1"><strong>Inicio:</strong> {{ evento.fecha_inicio|date:"d/m/Y H:i" }}</p>
+                        <p class="mb-1"><strong>Término:</strong> {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle"></i> Configuración del Evento</h6>
+                            <div class="d-flex justify-content-between">
+                                <span>Participantes:</span>
+                                <span class="badge bg-info">{{ participantes_count }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Candidatos:</span>
+                                <span class="badge bg-success">{{ candidatos_count }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Votos emitidos:</span>
+                                <span class="badge bg-warning">{{ votos_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'panel_admin' %}" class="btn btn-secondary mb-2"><i class="bi bi-arrow-left"></i> Volver al Panel</a><br>
+                <div class="btn-group-vertical d-grid gap-2">
+                    <a href="{% url 'asignar_participantes' evento.id %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-people"></i> Gestionar Participantes
+                    </a>
+                    <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-person-badge"></i> Gestionar Candidatos
+                    </a>
+                </div>
             </div>
         </div>
 
-        <h5 class="mt-4 mb-3">Candidatos Asignados</h5>
-        <table class="table table-bordered bg-white">
-            <thead>
-                <tr>
-                    <th>Foto</th>
-                    <th>Nombre</th>
-                    <th>Fecha de Registro</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in candidatos %}
-                <tr>
-                    <td>
-                        {% if c.persona.foto_url %}
-                            <img src="{{ c.persona.foto_url }}" alt="Foto de {{ c.persona.nombre }}" class="thumb img-thumbnail">
-                        {% else %}
-                            <span class="text-muted">Sin foto</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ c.persona.nombre }}</td>
-                    <td>
-                        {% if c.fecha_registro %}
-                            {{ c.fecha_registro|date:"d M Y H:i" }}
-                        {% else %}
-                            <span class="text-muted">Sin fecha</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="3" class="text-center text-muted">No hay candidatos asignados</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <!-- Sección de Participantes -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Participantes del Evento ({{ participantes_count }})</h5>
+                <small>Personas autorizadas para votar en este evento</small>
+            </div>
+            <div class="card-body">
+                {% if participantes %}
+                    <div class="row">
+                        {% for participante in participantes %}
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex align-items-center p-2 border rounded">
+                                    {% if participante.persona__foto_url %}
+                                        <img src="{{ participante.persona__foto_url }}" alt="{{ participante.persona__nombre }}" class="thumb img-thumbnail me-3">
+                                    {% else %}
+                                        <div class="thumb bg-primary text-white d-flex align-items-center justify-content-center rounded me-3">
+                                            {{ participante.persona__nombre|first|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold">{{ participante.persona__nombre }}</div>
+                                        <small class="text-muted">{{ participante.persona__email }}</small>
+                                        {% if participante.ha_votado %}
+                                            <br><span class="badge bg-success"><i class="bi bi-check-circle"></i> Ya votó</span>
+                                        {% else %}
+                                            <br><span class="badge bg-warning"><i class="bi bi-clock"></i> Pendiente</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> No hay participantes asignados</h6>
+                        <p class="mb-2">Para que las personas puedan votar en este evento, primero debes asignar participantes.</p>
+                        <a href="{% url 'asignar_participantes' evento.id %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-person-plus"></i> Asignar Participantes
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
 
-        <div class="mt-4">
-            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success">Editar Candidatos</a>
-            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
+        <!-- Sección de Candidatos -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Candidatos del Evento ({{ candidatos_count }})</h5>
+                <small>Participantes que pueden recibir votos</small>
+            </div>
+            <div class="card-body">
+                {% if candidatos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Foto</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Fecha de Registro</th>
+                                    <th>Votos Recibidos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for candidato in candidatos %}
+                                <tr>
+                                    <td>
+                                        {% if candidato.persona.foto_display_url %}
+                                            <img src="{{ candidato.persona.foto_display_url }}" alt="Foto de {{ candidato.persona.nombre }}" class="thumb img-thumbnail">
+                                        {% else %}
+                                            <div class="thumb bg-success text-white d-flex align-items-center justify-content-center rounded">
+                                                {{ candidato.persona.nombre|first|upper }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ candidato.persona.nombre }}</strong>
+                                        <span class="badge bg-success ms-2">Candidato</span>
+                                    </td>
+                                    <td>{{ candidato.persona.email|default:"Sin email" }}</td>
+                                    <td>
+                                        {% if candidato.fecha_registro %}
+                                            {{ candidato.fecha_registro|date:"d M Y H:i" }}
+                                        {% else %}
+                                            <span class="text-muted">Sin fecha</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ candidato.votos_recibidos|default:0 }} voto{{ candidato.votos_recibidos|default:0|pluralize }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> No hay candidatos asignados</h6>
+                        <p class="mb-2">Para que las personas puedan votar, necesitas asignar candidatos de entre los participantes.</p>
+                        {% if participantes_count > 0 %}
+                            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success btn-sm">
+                                <i class="bi bi-person-badge"></i> Asignar Candidatos
+                            </a>
+                        {% else %}
+                            <p class="text-muted">Primero debes asignar participantes al evento.</p>
+                            <a href="{% url 'asignar_participantes' evento.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-person-plus"></i> Asignar Participantes Primero
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Estadísticas de Votación -->
+        {% if votos_count > 0 %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Estadísticas de Votación</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        <div class="border rounded p-3">
+                            <h4 class="text-primary">{{ votos_count }}</h4>
+                            <small class="text-muted">Total Votos</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="border rounded p-3">
+                            <h4 class="text-success">{{ participacion_porcentaje|floatformat:1 }}%</h4>
+                            <small class="text-muted">Participación</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="border rounded p-3">
+                            <h4 class="text-info">{{ candidatos_count }}</h4>
+                            <small class="text-muted">Candidatos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Configuración y Estado del Evento -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Configuración del Evento</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Estado de Configuración:</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-people {% if participantes_count > 0 %}text-success{% else %}text-muted{% endif %}"></i>
+                                Participantes: 
+                                {% if participantes_count > 0 %}
+                                    <span class="badge bg-success">{{ participantes_count }} asignado{{ participantes_count|pluralize }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin asignar</span>
+                                {% endif %}
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-person-badge {% if candidatos_count > 0 %}text-success{% else %}text-muted{% endif %}"></i>
+                                Candidatos: 
+                                {% if candidatos_count > 0 %}
+                                    <span class="badge bg-success">{{ candidatos_count }} asignado{{ candidatos_count|pluralize }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin asignar</span>
+                                {% endif %}
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle {% if participantes_count > 0 and candidatos_count > 0 %}text-success{% else %}text-warning{% endif %}"></i>
+                                Evento: 
+                                {% if participantes_count > 0 and candidatos_count > 0 %}
+                                    <span class="badge bg-success">Configurado</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Configuración incompleta</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Acciones Disponibles:</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'asignar_participantes' evento.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-people"></i> 
+                                {% if participantes_count > 0 %}Gestionar{% else %}Asignar{% endif %} Participantes
+                            </a>
+                            <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-outline-success btn-sm {% if participantes_count == 0 %}disabled{% endif %}">
+                                <i class="bi bi-person-badge"></i> 
+                                {% if candidatos_count > 0 %}Gestionar{% else %}Asignar{% endif %} Candidatos
+                            </a>
+                            {% if participantes_count > 0 and candidatos_count > 0 and evento.estado == 'En curso' %}
+                                <a href="#" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-eye"></i> Ver Resultados en Tiempo Real
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de navegación final -->
+        <div class="text-center">
+            <a href="{% url 'panel_admin' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver al Panel de Administración
+            </a>
         </div>
     </div>
 </body>
