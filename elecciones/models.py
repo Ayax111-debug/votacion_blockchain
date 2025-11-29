@@ -17,7 +17,7 @@ def upload_to_usuario(instance, filename):
 class Persona(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=255)
-    email = models.EmailField(unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True, max_length=191)
     rut = models.CharField(max_length=20, unique=True, null=True, blank=True)
     password_hash = models.CharField(max_length=255, null=True, blank=True)
     clave = models.CharField(max_length=50, null=True, blank=True)

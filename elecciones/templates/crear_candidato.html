@@ -1,51 +1,114 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Crear Candidato</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-6">
-                <h3>Asignar Votante como Candidato</h3>
-                <p class="text-muted">Selecciona un votante para convertirlo en candidato</p>
+{% extends 'base.html' %}
 
-                <form method="post">
+{% block title %}Crear Candidato | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto mt-10">
+        
+        <!-- Encabezado Simple -->
+        <div class="mb-8 text-center">
+            <div class="mx-auto h-12 w-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-2xl mb-4">
+                <i class="bi bi-person-badge-fill"></i>
+            </div>
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900">
+                Asignar Votante como Candidato
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Selecciona un votante de la lista para convertirlo en candidato oficial.
+            </p>
+        </div>
+
+        <!-- Card del Formulario -->
+        <div class="bg-white shadow-lg sm:rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-5 sm:p-8">
+                <form method="post" id="candidatoForm">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="{{ form.persona_id.id_for_label }}" class="form-label"><strong>{{ form.persona_id.label }}</strong></label>
-                        {{ form.persona_id }}
-                        {% if form.persona_id.errors %}<div class="invalid-feedback d-block">{{ form.persona_id.errors }}</div>{% endif %}
+
+                    <!-- Mensajes Flash -->
+                    {% if messages %}
+                        <div class="mb-6 space-y-2">
+                            {% for message in messages %}
+                                <div class="rounded-md p-4 {% if message.tags == 'error' %}bg-red-50 text-red-700 border-l-4 border-red-400{% else %}bg-green-50 text-green-700 border-l-4 border-green-400{% endif %}">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="bi {% if message.tags == 'error' %}bi-exclamation-circle-fill{% else %}bi-check-circle-fill{% endif %}"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm font-medium">{{ message }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Errores del Formulario -->
+                    {% if form.errors %}
+                        <div class="rounded-md bg-red-50 p-4 mb-6 border border-red-200">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-x-circle-fill text-red-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Corrige los siguientes errores:</h3>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <ul class="list-disc pl-5 space-y-1">
+                                            {% for field in form %}
+                                                {% for error in field.errors %}
+                                                    <li>{{ error }}</li>
+                                                {% endfor %}
+                                            {% endfor %}
+                                            {% for error in form.non_field_errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Campo de Selección -->
+                    <div class="space-y-4">
+                        <div>
+                            <label for="{{ form.persona_id.id_for_label }}" class="block text-sm font-semibold text-gray-700">
+                                {{ form.persona_id.label|default:"Seleccionar Persona" }}
+                            </label>
+                            <div class="mt-2">
+                                {{ form.persona_id }}
+                            </div>
+                            {% if form.persona_id.help_text %}
+                                <p class="mt-2 text-sm text-gray-500">{{ form.persona_id.help_text }}</p>
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <div class="d-grid gap-2 d-sm-flex">
-                        <button type="submit" class="btn btn-success btn-lg">Crear Candidato</button>
-                        <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+                    <!-- Botones de Acción -->
+                    <div class="mt-8 pt-5 border-t border-gray-100 flex items-center justify-end gap-x-4">
+                        <a href="{% url 'panel_admin' %}" class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex justify-center rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition">
+                            <i class="bi bi-check-lg mr-2"></i> Crear Candidato
+                        </button>
                     </div>
                 </form>
-
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} mt-3">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-
-                {% if form.errors %}
-                    <div class="alert alert-danger mt-3">
-                        <h6>Errores del formulario:</h6>
-                        <ul>
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <!-- Script Auto-Estilo para Select e Inputs -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputs = document.querySelectorAll('#candidatoForm select, #candidatoForm input[type="text"]');
+            inputs.forEach(input => {
+                input.classList.add(
+                    'block', 'w-full', 'rounded-md', 'border-0', 'py-2.5', 'pl-3', 'pr-10', 
+                    'text-gray-900', 'shadow-sm', 'ring-1', 'ring-inset', 'ring-gray-300', 
+                    'focus:ring-2', 'focus:ring-inset', 'focus:ring-green-600', 
+                    'sm:text-sm', 'sm:leading-6', 'bg-white'
+                );
+            });
+        });
+    </script>
+{% endblock %}

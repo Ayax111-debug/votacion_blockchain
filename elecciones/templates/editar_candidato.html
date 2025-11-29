@@ -1,35 +1,120 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Editar Candidato</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8">
-                <h2>Editar Candidato: {{ persona.nombre }}</h2>
-                <form method="post" class="mt-4">
+{% extends 'base.html' %}
+
+{% block title %}Editar Candidato | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto mt-10">
+        
+        <!-- Encabezado -->
+        <div class="mb-8 text-center">
+            <div class="mx-auto h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 text-2xl mb-4">
+                <i class="bi bi-pencil-square"></i>
+            </div>
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900">
+                Editar Candidato
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Modificando perfil de <span class="font-bold text-gray-800">{{ persona.nombre }}</span>
+            </p>
+        </div>
+
+        <!-- Card del Formulario -->
+        <div class="bg-white shadow-lg sm:rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-5 sm:p-8">
+                <form method="post" id="editarForm" class="space-y-6">
                     {% csrf_token %}
-                    <div class="form-group mb-3">
-                        <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
-                        {{ form.nombre }}
-                        {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+
+                    <!-- Campo Nombre -->
+                    <div>
+                        <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-semibold text-gray-700">
+                            Nombre Completo
+                        </label>
+                        <div class="mt-2">
+                            {{ form.nombre }}
+                        </div>
+                        {% if form.nombre.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.nombre.errors.0 }}</p>
+                        {% endif %}
                     </div>
-                    <div class="form-check mb-3">
-                        {{ form.es_votante }} <label for="{{ form.es_votante.id_for_label }}" class="form-check-label">{{ form.es_votante.label }}</label>
+
+                    <!-- Separador -->
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center">
+                            <span class="bg-white px-2 text-sm text-gray-500">Permisos y Roles</span>
+                        </div>
                     </div>
-                    <div class="form-check mb-3">
-                        {{ form.es_candidato }} <label for="{{ form.es_candidato.id_for_label }}" class="form-check-label">{{ form.es_candidato.label }}</label>
+
+                    <!-- Checkboxes Container -->
+                    <div class="bg-gray-50 rounded-lg p-4 space-y-4 border border-gray-200">
+                        
+                        <!-- Es Votante -->
+                        <div class="relative flex items-start">
+                            <div class="flex h-6 items-center">
+                                {{ form.es_votante }}
+                            </div>
+                            <div class="ml-3 text-sm leading-6">
+                                <label for="{{ form.es_votante.id_for_label }}" class="font-medium text-gray-900">
+                                    {{ form.es_votante.label }}
+                                </label>
+                                <p class="text-gray-500">Permite a este usuario emitir votos en el sistema.</p>
+                            </div>
+                        </div>
+
+                        <!-- Es Candidato -->
+                        <div class="relative flex items-start">
+                            <div class="flex h-6 items-center">
+                                {{ form.es_candidato }}
+                            </div>
+                            <div class="ml-3 text-sm leading-6">
+                                <label for="{{ form.es_candidato.id_for_label }}" class="font-medium text-gray-900">
+                                    {{ form.es_candidato.label }}
+                                </label>
+                                <p class="text-gray-500">Habilita a este usuario para ser elegido en eventos.</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-grid gap-2 d-sm-flex">
-                        <button type="submit" class="btn btn-success btn-lg">Guardar Cambios</button>
-                        <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+
+                    <!-- Botones de Acción -->
+                    <div class="pt-5 border-t border-gray-100 flex items-center justify-end gap-x-4">
+                        <a href="{% url 'panel_admin' %}" class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex justify-center rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition transform active:scale-95">
+                            <i class="bi bi-check-lg mr-2"></i> Guardar Cambios
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <!-- Script para estilizar inputs y checkboxes de Django -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const form = document.getElementById('editarForm');
+            
+            // Estilo para inputs de texto
+            const textInputs = form.querySelectorAll('input[type="text"]');
+            textInputs.forEach(input => {
+                input.classList.add(
+                    'block', 'w-full', 'rounded-md', 'border-0', 'py-2.5', 'text-gray-900', 
+                    'shadow-sm', 'ring-1', 'ring-inset', 'ring-gray-300', 
+                    'placeholder:text-gray-400', 'focus:ring-2', 'focus:ring-inset', 
+                    'focus:ring-green-600', 'sm:text-sm', 'sm:leading-6'
+                );
+            });
+
+            // Estilo específico para checkboxes
+            const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(chk => {
+                chk.classList.add(
+                    'h-4', 'w-4', 'rounded', 'border-gray-300', 
+                    'text-green-600', 'focus:ring-green-600', 'cursor-pointer'
+                );
+            });
+        });
+    </script>
+{% endblock %}

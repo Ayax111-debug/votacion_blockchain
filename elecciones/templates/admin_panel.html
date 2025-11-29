@@ -1,165 +1,215 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Panel de Administración</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; }
-    </style>
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Panel de Administración</h2>
-            <a href="{% url 'logout' %}" class="btn btn-outline-secondary">Cerrar Sesión</a>
-        </div>
+{% extends 'base.html' %}
 
-        <!-- Resumen -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary">{{ eventos|length }}</h5>
-                        <p class="card-text small">Eventos Total</p>
+{% block title %}Panel de Administración | VotaciónApp{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold text-gray-900 mb-8 text-center">Panel de Administración</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-purple-100 rounded-md p-3">
+                        <i class="bi bi-calendar-event text-purple-custom text-2xl"></i>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-info">{{ total_votantes }}</h5>
-                        <p class="card-text small">Votantes</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">{{ total_candidatos }}</h5>
-                        <p class="card-text small">Candidatos</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-warning">{{ total_candidaturas }}</h5>
-                        <p class="card-text small">Candidaturas Activas</p>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Eventos Total</dt>
+                            <dd>
+                                <div class="text-2xl font-semibold text-gray-900">{{ eventos|length }}</div>
+                            </dd>
+                        </dl>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Sección de eventos -->
-        <!-- Sección de eventos -->
-        <div class="mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>Eventos de Elección</h4>
-                <div>
-                    <a href="{% url 'agregar_usuario' %}" class="btn btn-success me-2">+ Agregar Usuario</a>
-                    <a href="{% url 'crear_evento' %}" class="btn btn-primary">+ Crear Nuevo Evento</a>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                        <i class="bi bi-people text-blue-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Votantes</dt>
+                            <dd>
+                                <div class="text-2xl font-semibold text-gray-900">{{ total_votantes }}</div>
+                            </dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
-
-            <!-- Botones de filtro -->
-            <div class="btn-group mb-3" role="group">
-                <a href="{% url 'panel_admin' %}?filtro=todos" class="btn {% if filtro == 'todos' %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
-                <a href="{% url 'panel_admin' %}?filtro=curso" class="btn {% if filtro == 'curso' %}btn-success{% else %}btn-outline-success{% endif %}">En curso</a>
-                <a href="{% url 'panel_admin' %}?filtro=futuro" class="btn {% if filtro == 'futuro' %}btn-primary{% else %}btn-outline-primary{% endif %}">Futuros</a>
-                <a href="{% url 'panel_admin' %}?filtro=terminado" class="btn {% if filtro == 'terminado' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Terminados</a>
+        </div>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                        <i class="bi bi-person-badge text-green-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Candidatos</dt>
+                            <dd>
+                                <div class="text-2xl font-semibold text-gray-900">{{ total_candidatos }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
             </div>
-
-            <table class="table table-bordered bg-white">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Fechas</th>
-                        <th>Estado</th>
-                        <th>Configuración</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in eventos_con_stats %}
-                    {% with evento=item.evento %}
-                    <tr>
-                        <td>{{ evento.nombre }}</td>
-                        <td>
-                            {% if evento.fecha_inicio and evento.fecha_termino %}
-                                {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
-                            {% else %}
-                                <span class="text-muted">Fechas por configurar</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge {% if evento.activo %}bg-success{% else %}bg-secondary{% endif %}">
-                                {% if evento.activo %}Activo{% else %}Inactivo{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <!-- Estado de configuración -->
-                            <div class="small">
-                                <div class="mb-1">
-                                    <i class="bi bi-people{% if item.participantes_count > 0 %}-fill text-success{% else %} text-muted{% endif %}"></i>
-                                    {{ item.participantes_count }} Participante{{ item.participantes_count|pluralize }}
-                                </div>
-                                <div class="mb-1">
-                                    <i class="bi bi-person-badge{% if item.candidatos_count > 0 %}-fill text-success{% else %} text-muted{% endif %}"></i>
-                                    {{ item.candidatos_count }} Candidato{{ item.candidatos_count|pluralize }}
-                                </div>
-                                {% if item.configuracion_completa %}
-                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Configurado</span>
-                                {% else %}
-                                    <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> Incompleto</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <!-- Botones en orden lógico -->
-                            <div class="btn-group-vertical btn-group-sm d-grid gap-1">
-                                <!-- Paso 1: Participantes -->
-                                <a href="{% url 'asignar_participantes' evento.id %}" 
-                                   class="btn {% if item.participantes_count > 0 %}btn-outline-primary{% else %}btn-primary{% endif %} btn-sm">
-                                    <i class="bi bi-people"></i> 
-                                    {% if item.participantes_count > 0 %}Gestionar{% else %}1. Asignar{% endif %} Participantes
-                                </a>
-                                
-                                <!-- Paso 2: Candidatos -->
-                                <a href="{% url 'asignar_candidatos' evento.id %}" 
-                                   class="btn {% if item.candidatos_count > 0 %}btn-outline-success{% else %}btn-success{% endif %} btn-sm
-                                         {% if item.participantes_count == 0 %}disabled{% endif %}">
-                                    <i class="bi bi-person-badge"></i> 
-                                    {% if item.candidatos_count > 0 %}Gestionar{% else %}2. Elegir{% endif %} Candidatos
-                                </a>
-                                
-                                <!-- Otros botones -->
-                                <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info btn-sm">
-                                    <i class="bi bi-eye"></i> Ver Detalles
-                                </a>
-                            </div>
-                            
-                            <!-- Botones de activación/desactivación -->
-                            <div class="mt-2">
-
-                            {% if evento.activo %}
-                                <form method="post" action="{% url 'desactivar_evento' evento.id %}" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-warning btn-sm">Desactivar</button>
-                                </form>
-                            {% else %}
-                                <a href="{% url 'activar_evento' evento.id %}" class="btn btn-outline-success btn-sm">Activar</a>
-                            {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endwith %}
-                    {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted">No hay eventos aún</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        </div>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-yellow-100 rounded-md p-3">
+                        <i class="bi bi-file-earmark-person text-yellow-600 text-2xl"></i>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Candidaturas Activas</dt>
+                            <dd>
+                                <div class="text-2xl font-semibold text-gray-900">{{ total_candidaturas }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-</html>
+
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Eventos de Elección</h3>
+            <div class="flex space-x-3">
+                <a href="{% url 'agregar_usuario' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
+                    + Agregar Usuario
+                </a>
+                <a href="{% url 'crear_evento' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-custom hover:bg-purple-custom focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
+                    + Crear Nuevo Evento
+                </a>
+            </div>
+        </div>
+
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex space-x-2 mb-4">
+                <a href="{% url 'panel_admin' %}?filtro=todos" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'todos' %}bg-purple-custom text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                    Todos
+                </a>
+                <a href="{% url 'panel_admin' %}?filtro=curso" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'curso' %}bg-green-100 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                    En curso
+                </a>
+                <a href="{% url 'panel_admin' %}?filtro=futuro" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'futuro' %}bg-blue-100 text-blue-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                    Futuros
+                </a>
+                <a href="{% url 'panel_admin' %}?filtro=terminado" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'terminado' %}bg-gray-100 text-gray-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                    Terminados
+                </a>
+            </div>
+
+            <div class="flex flex-col">
+                <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                    <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                        <div class="overflow-hidden border border-gray-200 sm:rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fechas</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configuración</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for item in eventos_con_stats %}
+                                    {% with evento=item.evento %}
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ evento.nombre }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {% if evento.fecha_inicio and evento.fecha_termino %}
+                                                {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                                            {% else %}
+                                                <span class="text-gray-400">Fechas por configurar</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if evento.activo %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                                {% if evento.activo %}Activo{% else %}Inactivo{% endif %}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div class="flex flex-col space-y-1">
+                                                <div class="flex items-center">
+                                                    <i class="bi bi-people mr-1.5 {% if item.participantes_count > 0 %}text-green-500{% else %}text-gray-400{% endif %}"></i>
+                                                    <span>{{ item.participantes_count }} Participante{{ item.participantes_count|pluralize }}</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <i class="bi bi-person-badge mr-1.5 {% if item.candidatos_count > 0 %}text-green-500{% else %}text-gray-400{% endif %}"></i>
+                                                    <span>{{ item.candidatos_count }} Candidato{{ item.candidatos_count|pluralize }}</span>
+                                                </div>
+                                                <div class="mt-1">
+                                                    {% if item.configuracion_completa %}
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                            <i class="bi bi-check-circle mr-1"></i> Configurado
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                            <i class="bi bi-exclamation-triangle mr-1"></i> Incompleto
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <div class="flex flex-col space-y-2">
+                                                <a href="{% url 'asignar_participantes' evento.id %}" 
+                                                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
+                                                    <i class="bi bi-people mr-1.5"></i> 
+                                                    {% if item.participantes_count > 0 %}Gestionar{% else %}1. Asignar{% endif %} Participantes
+                                                </a>
+                                                
+                                                <a href="{% url 'asignar_candidatos' evento.id %}" 
+                                                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition {% if item.participantes_count == 0 %}opacity-50 cursor-not-allowed{% endif %}">
+                                                    <i class="bi bi-person-badge mr-1.5"></i> 
+                                                    {% if item.candidatos_count > 0 %}Gestionar{% else %}2. Elegir{% endif %} Candidatos
+                                                </a>
+                                                
+                                                <a href="{% url 'ver_evento' evento.id %}" class="text-purple-custom hover:text-purple-900 flex items-center justify-end transition">
+                                                    <i class="bi bi-eye mr-1"></i> Ver Detalles
+                                                </a>
+                                                
+                                                <div class="flex justify-end">
+                                                    {% if evento.activo %}
+                                                        <form method="post" action="{% url 'desactivar_evento' evento.id %}" style="display:inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="text-red-600 hover:text-red-900 text-xs transition font-medium">
+                                                                <i class="bi bi-toggle-on mr-1"></i> Desactivar
+                                                            </button>
+                                                        </form>
+                                                    {% else %}
+                                                        {% if evento.fecha_termino and evento.fecha_termino < ahora %}
+                                                            <span class="inline-flex items-center px-2 py-1 border border-gray-200 rounded text-xs font-medium text-gray-400 bg-gray-50 cursor-not-allowed select-none" title="El periodo de votación ha terminado">
+                                                                <i class="bi bi-slash-circle mr-1"></i> Finalizado
+                                                            </span>
+                                                        {% else %}
+                                                            <a href="{% url 'activar_evento' evento.id %}" class="text-green-600 hover:text-green-900 text-xs transition flex items-center font-medium">
+                                                                <i class="bi bi-toggle-off mr-1"></i> Activar
+                                                            </a>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% empty %}
+                                    <tr><td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No hay eventos aún</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -30,7 +30,7 @@ urlpatterns = [
     # votante
     path('login-votante/', views.login_votante, name='login_votante'),
     path('panel-usuario/', views.panel_usuario, name='panel_usuario'),
-    path('votar-evento/<uuid:evento_id>/', views.votar_evento, name='votar_evento'),
+    path('votar-evento/<str:evento_id>/', views.votar_evento, name='votar_evento'),
     path('evento/<str:evento_id>/resultados/', views.resultados_evento, name='resultados_evento'),
     path('voto-confirmado/<str:evento_id>/', views.voto_confirmado, name='voto_confirmado'),
     path('voto-status/<str:evento_id>/', views.voto_status, name='voto_status'),

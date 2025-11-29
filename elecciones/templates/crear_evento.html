@@ -1,39 +1,153 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Crear Evento</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8">
-                <h2>Crear Nuevo Evento de Elección</h2>
-                <form method="post" class="mt-4">
+{% extends 'base.html' %}
+
+{% block title %}Crear Evento | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-3xl mx-auto mt-10 mb-12">
+        
+        <!-- Encabezado -->
+        <div class="mb-8 text-center">
+            <div class="mx-auto h-14 w-14 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 text-3xl mb-4 shadow-sm">
+                <i class="bi bi-calendar-plus-fill"></i>
+            </div>
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900">
+                Crear Nuevo Evento de Elección
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Define el nombre y los plazos de votación para el nuevo proceso electoral.
+            </p>
+        </div>
+
+        <div class="bg-white shadow-lg sm:rounded-xl border border-gray-200 overflow-hidden">
+            <!-- Barra superior decorativa -->
+            <div class="h-1 bg-gradient-to-r from-purple-500 to-indigo-600 w-full"></div>
+
+            <div class="px-4 py-6 sm:p-8">
+                <form method="post" id="eventoForm" class="space-y-6">
                     {% csrf_token %}
-                    <div class="form-group mb-3">
-                        <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre del Evento</label>
-                        {{ form.nombre }}
-                        {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+
+                    <!-- Mensajes de Error Generales -->
+                    {% if form.non_field_errors %}
+                        <div class="rounded-md bg-red-50 p-4 border-l-4 border-red-400">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-exclamation-circle-fill text-red-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-red-800">Atención</h3>
+                                    <div class="mt-2 text-sm text-red-700">
+                                        <ul class="list-disc pl-5 space-y-1">
+                                            {% for error in form.non_field_errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Nombre del Evento -->
+                    <div>
+                        <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-semibold text-gray-700">
+                            Nombre del Evento
+                        </label>
+                        <div class="mt-2">
+                            {{ form.nombre }}
+                        </div>
+                        {% if form.nombre.errors %}
+                            <p class="mt-2 text-sm text-red-600" id="email-error">{{ form.nombre.errors.0 }}</p>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">Ej: Elección Directorio 2025</p>
                     </div>
-                    <div class="form-group mb-3">
-                        <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label">Fecha de Inicio</label>
-                        {{ form.fecha_inicio }}
-                        {% if form.fecha_inicio.errors %}<div class="invalid-feedback d-block">{{ form.fecha_inicio.errors }}</div>{% endif %}
+
+                    <!-- Grid para Fechas -->
+                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                        <!-- Fecha Inicio -->
+                        <div>
+                            <label for="{{ form.fecha_inicio.id_for_label }}" class="block text-sm font-semibold text-gray-700">
+                                Fecha de Inicio
+                            </label>
+                            <div class="mt-2 relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <span class="text-gray-500 sm:text-sm"><i class="bi bi-calendar-event"></i></span>
+                                </div>
+                                {{ form.fecha_inicio }}
+                            </div>
+                            {% if form.fecha_inicio.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.fecha_inicio.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Fecha Término -->
+                        <div>
+                            <label for="{{ form.fecha_termino.id_for_label }}" class="block text-sm font-semibold text-gray-700">
+                                Fecha de Término
+                            </label>
+                            <div class="mt-2 relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <span class="text-gray-500 sm:text-sm"><i class="bi bi-calendar-x"></i></span>
+                                </div>
+                                {{ form.fecha_termino }}
+                            </div>
+                            {% if form.fecha_termino.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.fecha_termino.errors.0 }}</p>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="form-group mb-3">
-                        <label for="{{ form.fecha_termino.id_for_label }}" class="form-label">Fecha de Término</label>
-                        {{ form.fecha_termino }}
-                        {% if form.fecha_termino.errors %}<div class="invalid-feedback d-block">{{ form.fecha_termino.errors }}</div>{% endif %}
+
+                    <!-- Info Box -->
+                    <div class="rounded-md bg-blue-50 p-4 border border-blue-100">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-info-circle text-blue-400"></i>
+                            </div>
+                            <div class="ml-3 flex-1 md:flex md:justify-between">
+                                <p class="text-sm text-blue-700">
+                                    La fecha de término debe ser posterior a la fecha de inicio. El evento se activará automáticamente cuando llegue la fecha de inicio.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-grid gap-2 d-sm-flex">
-                        <button type="submit" class="btn btn-success btn-lg">Guardar Evento</button>
-                        <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
+
+                    <!-- Botones de Acción -->
+                    <div class="pt-5 border-t border-gray-100 flex items-center justify-end gap-x-4">
+                        <a href="{% url 'panel_admin' %}" class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex justify-center rounded-md bg-purple-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 transition transform active:scale-95">
+                            <i class="bi bi-save mr-2"></i> Guardar Evento
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <!-- Script para estilizar automáticamente los inputs de Django -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Seleccionar inputs de texto y datetime-local
+            const inputs = document.querySelectorAll('#eventoForm input[type="text"], #eventoForm input[type="datetime-local"]');
+            
+            inputs.forEach(input => {
+                // Clases base
+                let classes = [
+                    'block', 'w-full', 'rounded-md', 'border-0', 'py-2.5', 'text-gray-900', 
+                    'shadow-sm', 'ring-1', 'ring-inset', 'ring-gray-300', 
+                    'placeholder:text-gray-400', 'focus:ring-2', 'focus:ring-inset', 
+                    'focus:ring-purple-600', 'sm:text-sm', 'sm:leading-6'
+                ];
+
+                // Si es fecha, añadimos padding extra a la izquierda para el icono
+                if (input.type === 'datetime-local') {
+                    classes.push('pl-10'); 
+                } else {
+                    classes.push('pl-3');
+                }
+
+                input.classList.add(...classes);
+            });
+        });
+    </script>
+{% endblock %}

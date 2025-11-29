@@ -1,30 +1,66 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Activar Evento</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Activar Evento</h5>
-                        <p class="card-text">¿Estás seguro de que deseas activar <strong>{{ evento.nombre }}</strong>?</p>
-                        <p class="text-muted"><small>El evento será visible para los votantes una vez activado.</small></p>
-                        <form method="post">
-                            {% csrf_token %}
-                            <div class="d-grid gap-2 d-sm-flex">
-                                <button type="submit" class="btn btn-success btn-lg">Confirmar Activación</button>
-                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">Cancelar</a>
-                            </div>
-                        </form>
+{% extends 'base.html' %}
+
+{% block title %}Activar Evento | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col justify-center py-12 sm:px-6 lg:px-8 min-h-[60vh]">
+        
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-white shadow-xl sm:rounded-xl border border-gray-200 overflow-hidden">
+                <div class="px-4 py-5 sm:p-6">
+                    
+                    <!-- Icono de Acción (Verde) -->
+                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-5">
+                        <i class="bi bi-play-circle-fill text-green-600 text-4xl"></i>
                     </div>
+                    
+                    <!-- Título y Mensaje -->
+                    <div class="text-center">
+                        <h3 class="text-xl font-bold leading-6 text-gray-900" id="modal-title">
+                            Activar Evento
+                        </h3>
+                        <div class="mt-4">
+                            <p class="text-sm text-gray-500">
+                                ¿Estás seguro de que deseas activar el evento 
+                                <span class="font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded mx-1">{{ evento.nombre }}</span>?
+                            </p>
+                            <div class="mt-3 rounded-md bg-green-50 p-3">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="bi bi-check-circle-fill text-green-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-xs text-green-700 text-left">
+                                            Al confirmar, el evento <strong>será visible inmediatamente</strong> para todos los votantes asignados y podrán comenzar a participar si las fechas lo permiten.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="mt-8 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                        <form method="post" class="contents">
+                            {% csrf_token %}
+                            <button type="submit" class="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 sm:col-start-2 transition-colors duration-200">
+                                <i class="bi bi-rocket-takeoff-fill mr-2"></i> Confirmar Activación
+                            </button>
+                        </form>
+                        
+                        <a href="{% url 'panel_admin' %}" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0 transition-colors duration-200">
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Barra inferior decorativa -->
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 border-t border-gray-100 flex justify-center">
+                    <span class="text-xs text-gray-400 flex items-center">
+                        <i class="bi bi-eye mr-1"></i> El evento se hará público
+                    </span>
                 </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

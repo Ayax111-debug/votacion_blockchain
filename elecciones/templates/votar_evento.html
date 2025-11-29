@@ -1,31 +1,73 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Votar en {{ evento.nombre }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <h3>Votar en {{ evento.nombre }}</h3>
-        <form method="post">
-            {% csrf_token %}
-            <div class="list-group mb-3">
-                {% for candidato in candidatos %}
-                    <label class="list-group-item d-flex align-items-center">
-                        <input type="radio" name="candidato" value="{{ candidato.persona.id }}" required class="me-3">
-                        {% if candidato.persona.foto_display_url %}
-                            <img src="{{ candidato.persona.foto_display_url }}" alt="{{ candidato.persona.nombre }}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;margin-right:8px;">
-                        {% endif %}
-                        <span>{{ candidato.persona.nombre }}</span>
-                    </label>
-                {% empty %}
-                    <p class="text-muted">No hay candidatos disponibles.</p>
-                {% endfor %}
-            </div>
-            <button type="submit" class="btn btn-primary">Confirmar voto</button>
-            <a href="{% url 'panel_usuario' %}" class="btn btn-secondary">Volver</a>
-        </form>
+{% extends 'base.html' %}
+
+
+{% block content %}
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <!-- Icono o Logo superior -->
+        <div class="mx-auto h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl mb-4">
+            <i class="bi bi-box-seam-fill"></i>
+        </div>
+        <h2 class="text-center text-3xl font-bold tracking-tight text-gray-900">
+            Emite tu Voto
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            Evento: <span class="font-semibold text-gray-800">{{ evento.nombre }}</span>
+        </p>
     </div>
-</body>
-</html>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
+        <div class="bg-white py-8 px-4 shadow-xl ring-1 ring-gray-900/5 sm:rounded-xl sm:px-10 border-t-4 border-blue-600">
+            
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="space-y-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona tu candidato:</label>
+                    
+                    {% for candidato in candidatos %}
+                        <label class="relative flex items-center p-4 border rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 group">
+                            <div class="flex h-5 items-center">
+                                <input type="radio" name="candidato" value="{{ candidato.persona.id }}" required 
+                                       class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                            </div>
+                            <div class="ml-3 flex items-center w-full">
+                                {% if candidato.persona.foto_display_url %}
+                                    <img src="{{ candidato.persona.foto_display_url }}" alt="{{ candidato.persona.nombre }}" 
+                                         class="h-10 w-10 rounded-full object-cover border border-gray-200 mr-3">
+                                {% else %}
+                                    <div class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm border border-gray-200 mr-3">
+                                        {{ candidato.persona.nombre|first|upper }}
+                                    </div>
+                                {% endif %}
+                                <span class="block text-sm font-medium text-gray-900 group-hover:text-blue-700">
+                                    {{ candidato.persona.nombre }}
+                                </span>
+                            </div>
+                        </label>
+                    {% empty %}
+                        <div class="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                            <i class="bi bi-person-x text-gray-400 text-2xl block mb-2"></i>
+                            <p class="text-sm text-gray-500">No hay candidatos disponibles.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="pt-4 flex flex-col gap-3">
+                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition transform active:scale-[0.99]">
+                        <i class="bi bi-check2-circle mr-2"></i> Confirmar Voto
+                    </button>
+                    
+                    <a href="{% url 'panel_usuario' %}" class="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
+                        Cancelar y Volver
+                    </a>
+                </div>
+            </form>
+
+        </div>
+        
+        <p class="text-center text-xs text-gray-400 mt-6">
+            <i class="bi bi-lock-fill"></i> Tu elección es secreta y se registrará de forma segura.
+        </p>
+    </div>
+
+{% endblock %}

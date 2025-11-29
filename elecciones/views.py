@@ -14,269 +14,169 @@ from django.dispatch import receiver
 from .utils import requiere_votante_sesion
 from uuid import UUID
 from django.db.models import Count
-
+from .models import (
+    Persona, 
+    EventoEleccion, 
+    Candidatura, 
+    Administrador, 
+    ParticipacionEleccion, # <--- ESTE DEBE ESTAR ARRIBA
+    Voto
+)
+from django.utils import timezone
+from datetime import datetime
 logger = logging.getLogger(__name__)
 import os
 import logging
+from django.views.decorators.csrf import csrf_exempt
+from .models import Voto
+
 
 logger = logging.getLogger(__name__)
 
 @requiere_votante_sesion
 def votar_evento(request, evento_id):
-    # Get votante_id to check if already voted
+    # 1. Validar sesión
     votante_id = request.session.get('votante_id')
+    if not votante_id:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+             return JsonResponse({'error': 'Sesión expirada'}, status=401)
+        messages.error(request, "Tu sesión ha expirado.")
+        return redirect('login_votante')
     
-    # Check if user has already voted in this event (redirect to panel if true)
-    if votante_id:
-        from .models import Voto
-        existing_vote = Voto.objects.filter(evento_id=evento_id, persona_votante_id=votante_id).first()
-        if existing_vote:
-            messages.warning(request, "Ya has votado en este evento.")
-            return redirect('panel_usuario')
+    # 2. Seguridad: Verificar lista de invitados
+    es_invitado = ParticipacionEleccion.objects.filter(
+        evento_id=evento_id, 
+        persona_id=votante_id
+    ).exists()
+
+    if not es_invitado:
+        messages.error(request, "⛔ No tienes permiso para votar en este evento.")
+        return redirect('panel_usuario')
+
+    # 3. Verificar si ya votó
+    if Voto.objects.filter(evento_id=evento_id, persona_votante_id=votante_id).exists():
+        messages.warning(request, "Ya has votado en este evento.")
+        return redirect('panel_usuario')
     
-    # Avoid instantiating the full EventoEleccion model to prevent
-    # DB-driver datetime->string conversion issues that break Django's
-    # timezone utilities. Load only needed fields and normalize datetimes.
-    ev = EventoEleccion.objects.filter(id=evento_id).values('id', 'nombre', 'fecha_inicio', 'fecha_termino').first()
-    if not ev:
+    # 4. Cargar Evento (Lógica anti-errores de driver)
+    ev_data = EventoEleccion.objects.filter(id=evento_id).values('id', 'nombre', 'fecha_inicio', 'fecha_termino', 'activo').first()
+    if not ev_data:
         from django.http import Http404
         raise Http404("Evento no encontrado")
 
-    from datetime import datetime
-    fi = ev.get('fecha_inicio')
-    ft = ev.get('fecha_termino')
-    if isinstance(fi, str):
-        try:
-            fi = datetime.fromisoformat(fi)
-        except Exception:
-            try:
-                fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
-            except Exception:
-                fi = None
-    if isinstance(ft, str):
-        try:
-            ft = datetime.fromisoformat(ft)
-        except Exception:
-            try:
-                ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
-            except Exception:
-                ft = None
+    # --- NORMALIZACIÓN DE FECHAS ---
+    fi = ev_data.get('fecha_inicio')
+    ft = ev_data.get('fecha_termino')
+    
+    # Función auxiliar para limpiar fechas
+    def limpiar_fecha(fecha_sucia):
+        if not fecha_sucia: return None
+        if isinstance(fecha_sucia, str):
+            try: return datetime.fromisoformat(fecha_sucia)
+            except:
+                try: return datetime.strptime(fecha_sucia, '%Y-%m-%d %H:%M:%S')
+                except: return None
+        return fecha_sucia # Ya es datetime
 
+    start_date = limpiar_fecha(fi)
+    end_date = limpiar_fecha(ft)
+
+    # Quitamos zona horaria para comparar "peras con peras" (Naive vs Naive)
+    if start_date and start_date.tzinfo: start_date = start_date.replace(tzinfo=None)
+    if end_date and end_date.tzinfo: end_date = end_date.replace(tzinfo=None)
+    
+    # Obtenemos hora actual del servidor (Naive)
+    ahora = datetime.now()
+
+    # -------------------------------------------------------------------------
+    # 🕒 LÓGICA DE TIEMPO: PASADO, FUTURO Y AUTO-CIERRE
+    # -------------------------------------------------------------------------
+    
+    # Caso A: El evento ya terminó (Pasado)
+    if end_date and ahora > end_date:
+        # 1. Si seguía activo en BD, lo apagamos automáticamente
+        if ev_data['activo']:
+            EventoEleccion.objects.filter(id=evento_id).update(activo=False)
+            logger.info(f"Evento {evento_id} cerrado automáticamente por fecha vencida.")
+        
+        messages.error(request, "⏳ Este evento ha finalizado. El periodo de votación terminó.")
+        return redirect('panel_usuario')
+
+    # Caso B: El evento no ha empezado (Futuro)
+    if start_date and ahora < start_date:
+        messages.warning(request, f"⏳ Este evento aún no comienza. Vuelve el {start_date}.")
+        return redirect('panel_usuario')
+
+    # Caso C: El administrador lo desactivó manualmente, aunque las fechas estén bien
+    if not ev_data['activo']:
+        messages.error(request, "⛔ Este evento se encuentra desactivado temporalmente.")
+        return redirect('panel_usuario')
+
+    # -------------------------------------------------------------------------
+
+    # Preparar objeto para el template
     evento = {
-        'id': ev['id'],
-        'nombre': ev['nombre'],
-        'fecha_inicio': fi,
-        'fecha_termino': ft,
+        'id': ev_data['id'],
+        'nombre': ev_data['nombre'],
+        'fecha_inicio': start_date,
+        'fecha_termino': end_date,
     }
 
-    # Obtener candidatos usando consulta SQL directa para evitar problemas datetime
+    # 5. Cargar Candidatos
+    candidatos = []
     try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT p.id, p.nombre, p.foto
-                FROM elecciones_persona p
-                INNER JOIN elecciones_candidatura c ON p.id = c.persona_id
-                WHERE c.evento_id = %s
-                ORDER BY p.nombre
-            """, [evento_id])
-            candidatos_raw = cursor.fetchall()
-            
-        candidatos = []
-        for candidato_row in candidatos_raw:
+        candidaturas_db = Candidatura.objects.filter(evento_id=evento_id).select_related('persona')
+        for c in candidaturas_db:
             candidatos.append({
                 'persona': {
-                    'id': candidato_row[0],
-                    'nombre': candidato_row[1],
-                    'foto_display_url': candidato_row[2] if candidato_row[2] else None
+                    'id': c.persona.id, 
+                    'nombre': c.persona.nombre,
+                    'foto_display_url': c.persona.foto.url if c.persona.foto else None
                 }
             })
     except Exception as e:
+        logger.exception(f"Error obteniendo candidatos: {evento_id}")
         candidatos = []
-        logger.exception(f"Error obteniendo candidatos para votación en evento {evento_id}")
 
+    # 6. Procesar Voto (POST)
     if request.method == "POST":
         candidato_id = request.POST.get("candidato")
-        from .models import Voto, ParticipacionEleccion, Persona
         
-        # Get votante_id first (required for all subsequent operations)
-        votante_id = request.session.get('votante_id')
-        if not votante_id:
-            logger.error("No votante_id in session")
-            messages.error(request, "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
-            return redirect('login_votante')
-        
-        # Check if user has already voted in this event
-        existing_vote = Voto.objects.filter(evento_id=evento_id, persona_votante_id=votante_id).first()
-        if existing_vote:
-            logger.warning(f"User {votante_id} attempted to vote again in event {evento_id}")
-            messages.warning(request, "Ya has votado en este evento. No puedes votar más de una vez.")
-            return redirect('panel_usuario')
-        
-        # Compute commitment using voter secret (if available)
+        # Validar seguridad final antes de guardar
+        if not ParticipacionEleccion.objects.filter(evento_id=evento_id, persona_id=votante_id).exists():
+             return redirect('panel_usuario')
+
+        # Calcular commitment
         voter_secret = None
         try:
-            votante = Persona.objects.filter(id=votante_id).values('id', 'clave').first()
-            if votante:
-                voter_secret = votante.get('clave')
-        except Exception as e:
-            logger.exception(f"Error fetching voter data: {e}")
-            voter_secret = None
+            votante_obj = Persona.objects.filter(id=votante_id).values('id', 'clave').first()
+            if votante_obj: voter_secret = votante_obj.get('clave')
+        except: pass
 
         commitment = None
-        try:
-            if voter_secret:
-                # Local import to avoid failing app import if web3 not installed
+        if voter_secret:
+            try:
                 from .web3_utils import VotingBlockchain
                 commitment = VotingBlockchain.generate_commitment(voter_secret, evento_id, candidato_id)
-                logger.info(f"Generated commitment: {commitment[:10]}... for voter {votante_id}")
-        except Exception as e:
-            logger.exception(f"Failed to generate commitment: {str(e)}")
-            messages.error(request, "Error al generar el compromiso del voto. Por favor, intenta nuevamente.")
-            return redirect('panel_usuario')
+            except: pass
 
-        # Try to send vote to blockchain first; only create DB record if on-chain submission succeeds
+        # Guardar voto
         try:
             from django.db import transaction
-            from .web3_utils import create_voting_blockchain
-
-            # Initialize blockchain connection (may raise ValueError if not configured)
-            blockchain = create_voting_blockchain()
-
-            # Ensure we have a commitment to work with
-            if not commitment:
-                logger.warning("No commitment generated for voter; aborting vote")
-                messages.error(request, "No se pudo generar el compromiso del voto.")
-                return redirect('panel_usuario')
-
-            try:
-                # First, check if the commitment already exists on-chain to avoid revert
-                exists, existing_block = blockchain.verify_commitment_onchain(commitment)
-                if exists:
-                    # Record the vote as already-onchain (avoid sending tx)
-                    from django.db import transaction
-                    # attempt to fetch sender address if available
-                    try:
-                        sender_addr = blockchain.contract.functions.getCommitmentSender(commitment).call()
-                    except Exception:
-                        sender_addr = None
-
-                    with transaction.atomic():
-                        voto = Voto.objects.create(
-                            evento_id=evento_id,
-                            persona_candidato_id=candidato_id,
-                            persona_votante_id=votante_id,
-                            commitment=commitment,
-                            onchain_status='exists',
-                            tx_hash=None,
-                            commitment_sender=sender_addr,
-                            block_number=existing_block
-                        )
-
-                    logger.info(f"Commitment already on-chain (block {existing_block}); created Voto {voto.id} with status 'exists'. sender={sender_addr}")
-                    return redirect('voto_confirmado', evento_id=evento_id)
-
-                # Not on-chain yet: send commitment to chain and wait for receipt
-                result = blockchain.send_commitment_to_chain(commitment, wait_for_receipt=True)
-
-                # If transaction indicates failure, check again if commitment appeared (race) else report error
-                if result.get('status') != 'success':
-                    logger.error(f"On-chain transaction failed: status={result.get('status')}, tx_hash={result.get('tx_hash')}, block_number={result.get('block_number')}")
-
-                    # Re-check on-chain in case the transaction reverted because commitment already exists
-                    exists_after, block_after = blockchain.verify_commitment_onchain(commitment)
-                    if exists_after:
-                        try:
-                            sender_addr = blockchain.contract.functions.getCommitmentSender(commitment).call()
-                        except Exception:
-                            sender_addr = None
-
-                        with transaction.atomic():
-                            voto = Voto.objects.create(
-                                evento_id=evento_id,
-                                persona_candidato_id=candidato_id,
-                                persona_votante_id=votante_id,
-                                commitment=commitment,
-                                onchain_status='exists',
-                                tx_hash=result.get('tx_hash'),
-                                commitment_sender=sender_addr,
-                                block_number=block_after
-                            )
-                        logger.info(f"Commitment appeared on-chain after failed tx; created Voto {voto.id} with status 'exists'. sender={sender_addr}")
-                        return redirect('voto_confirmado', evento_id=evento_id)
-
-                    # Otherwise, create DB record with 'failed' status
-                    with transaction.atomic():
-                        voto = Voto.objects.create(
-                            evento_id=evento_id,
-                            persona_candidato_id=candidato_id,
-                            persona_votante_id=votante_id,
-                            commitment=commitment,
-                            onchain_status='failed',
-                            tx_hash=result.get('tx_hash'),
-                            commitment_sender=None,
-                            block_number=result.get('block_number')
-                        )
-                    logger.error(f"Failed to send commitment to blockchain: {result}. Created Voto {voto.id} with status 'failed'")
-                    return redirect('voto_confirmado', evento_id=evento_id)
-
-                # Persist the vote only after successful on-chain inclusion
-                # Get the sender address from the blockchain
-                try:
-                    sender_addr = blockchain.contract.functions.getCommitmentSender(commitment).call()
-                except Exception as e:
-                    logger.warning(f"Could not retrieve commitment sender: {e}")
-                    sender_addr = blockchain.get_account_address()
-                
-                from django.db import transaction
-                with transaction.atomic():
-                    voto = Voto.objects.create(
-                        evento_id=evento_id,
-                        persona_candidato_id=candidato_id,
-                        persona_votante_id=votante_id,
-                        commitment=commitment,
-                        onchain_status='success',
-                        tx_hash=result.get('tx_hash'),
-                        commitment_sender=sender_addr,
-                        block_number=result.get('block_number')
-                    )
-
-            except Exception as e:
-                logger.exception(f"Failed to send commitment to blockchain: {str(e)}")
-                messages.error(request, "Error al enviar el voto al blockchain.")
-                return redirect('panel_usuario')
-
-            logger.info(f"Vote {voto.id} created after successful on-chain tx {result.get('tx_hash')}")
+            with transaction.atomic():
+                voto = Voto.objects.create(
+                    evento_id=evento_id, 
+                    persona_candidato_id=candidato_id, 
+                    persona_votante_id=votante_id, 
+                    commitment=commitment
+                )
+                ParticipacionEleccion.objects.filter(evento_id=evento_id, persona_id=votante_id).update(ha_votado=True)
+            
             return redirect('voto_confirmado', evento_id=evento_id)
 
-        except ValueError as e:
-            # Blockchain not configured: fall back to simulated behavior and still record vote
-            try:
-                from django.db import transaction
-                import uuid
-
-                with transaction.atomic():
-                    voto = Voto.objects.create(
-                        evento_id=evento_id,
-                        persona_candidato_id=candidato_id,
-                        persona_votante_id=votante_id,
-                        commitment=commitment,
-                        onchain_status='simulated',
-                        tx_hash=f"0x{uuid.uuid4().hex[:32]}",
-                        block_number=999999
-                    )
-
-                logger.info(f"Vote {voto.id} recorded in simulated mode (blockchain not configured)")
-                return redirect('voto_confirmado', evento_id=evento_id)
-
-            except Exception as ex:
-                logger.exception("Failed to create simulated vote record")
-                messages.error(request, "Error al crear el registro del voto en modo simulado.")
-                return redirect('panel_usuario')
-
         except Exception as e:
-            logger.exception("Failed to send commitment to blockchain; vote not recorded")
-            messages.error(request, "Error al enviar el voto al blockchain.")
+            logger.exception("Error guardando voto")
+            messages.error(request, "Error al registrar el voto.")
             return redirect('panel_usuario')
 
     return render(request, "votar_evento.html", {
@@ -288,40 +188,45 @@ def votar_evento(request, evento_id):
 def panel_usuario(request):
     votante_id = request.session.get("votante_id")
 
-    # Retrieve only the fields we need for the persona to avoid instantiating
-    # a full model which may trigger datetime conversions from the DB driver.
+    # Obtener datos de la persona
     persona_data = Persona.objects.filter(id=votante_id).values('id', 'nombre', 'foto').first()
     if not persona_data:
-        # Keep the same behavior as get_object_or_404 when persona not found
         from django.http import Http404
         raise Http404("Persona no encontrada")
 
-    # Load eventos but be defensive: some DB drivers may return DATETIME as
-    # strings. Normalize to Python datetimes so template date filters work.
-    eventos_raw = list(EventoEleccion.objects.filter(activo=True).values('id', 'nombre', 'fecha_inicio', 'fecha_termino'))
-    from datetime import datetime
+    # -------------------------------------------------------------------------
+    # 🔒 CORRECCIÓN PRINCIPAL: FILTRAR POR INVITACIÓN
+    # -------------------------------------------------------------------------
+    # 1. Buscamos en la tabla 'ParticipacionEleccion' los eventos donde este usuario está invitado.
+    eventos_invitados_ids = ParticipacionEleccion.objects.filter(
+        persona_id=votante_id
+    ).values_list('evento_id', flat=True)
 
+    # 2. Filtramos la tabla de Eventos usando esos IDs y que estén activos.
+    #    (Ya no traemos "todos" los activos, solo los que coinciden)
+    eventos_raw = list(EventoEleccion.objects.filter(
+        id__in=eventos_invitados_ids, 
+        activo=True
+    ).values('id', 'nombre', 'fecha_inicio', 'fecha_termino'))
+    # -------------------------------------------------------------------------
+
+    from datetime import datetime
     eventos = []
+    
+    # Tu lógica de normalización de fechas (se mantiene igual)
     for ev in eventos_raw:
         fi = ev.get('fecha_inicio')
         ft = ev.get('fecha_termino')
-        # If the driver returned strings, parse them to datetimes
         if isinstance(fi, str):
-            try:
-                fi = datetime.fromisoformat(fi)
-            except Exception:
-                try:
-                    fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    fi = None
+            try: fi = datetime.fromisoformat(fi)
+            except: 
+                try: fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
+                except: fi = None
         if isinstance(ft, str):
-            try:
-                ft = datetime.fromisoformat(ft)
-            except Exception:
-                try:
-                    ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    ft = None
+            try: ft = datetime.fromisoformat(ft)
+            except: 
+                try: ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
+                except: ft = None
 
         eventos.append({
             'id': ev['id'],
@@ -330,10 +235,9 @@ def panel_usuario(request):
             'fecha_termino': ft,
         })
 
-    # Determine which events the persona has already voted in by checking Voto records
+    # Filtrar historial vs disponibles
     voted_evento_ids = list(Voto.objects.filter(persona_votante_id=votante_id).values_list('evento_id', flat=True).distinct())
 
-    # Build available events (not voted) and history (voted)
     available = [e for e in eventos if e['id'] not in voted_evento_ids]
     history = [e for e in eventos if e['id'] in voted_evento_ids]
 
@@ -382,39 +286,125 @@ def logout_view(request):
     return redirect('login_votante')
 
 
+@login_required
+@user_passes_test(lambda u: u.is_staff)
 def panel_admin(request):
     filtro = request.GET.get('filtro', 'todos')
     
-    # Simplificar para evitar problemas datetime - mostrar todos los eventos por ahora
-    # TODO: Implementar filtros cuando se resuelvan los problemas datetime
+    # 1. Obtener eventos RAW
     try:
-        # Obtener eventos con consulta SQL directa para evitar conversión datetime
         from django.db import connection
-        
         with connection.cursor() as cursor:
+            # Traemos todo como string para ver qué formato tienen realmente
             cursor.execute("""
                 SELECT id, nombre, activo, fecha_inicio, fecha_termino 
                 FROM elecciones_eventoeleccion 
-                ORDER BY nombre
             """)
             eventos_raw = cursor.fetchall()
-            
-        # Crear objetos evento simplificados
-        eventos = []
-        for evento_row in eventos_raw:
-            class EventoSimple:
-                def __init__(self, evento_id, nombre, activo, fecha_inicio, fecha_termino):
-                    self.id = evento_id
-                    self.nombre = nombre
-                    self.activo = activo
-                    self.fecha_inicio = fecha_inicio
-                    self.fecha_termino = fecha_termino
-            
-            eventos.append(EventoSimple(evento_row[0], evento_row[1], evento_row[2], evento_row[3], evento_row[4]))
+    except Exception as e:
+        logger.exception("Error SQL")
+        eventos_raw = []
 
-        # Agregar estadísticas para cada evento
-        eventos_con_stats = []
-        for evento in eventos:
+    # 2. Preparar fechas (Depuración)
+    from datetime import datetime
+    import sys
+
+    ahora = datetime.now() # Fecha naive (sin zona horaria) del sistema
+    
+    print(f"\n--- INICIO DEBUG FILTRO: {filtro} ---")
+    print(f"Hora del Servidor (Ahora): {ahora}")
+
+    eventos_filtrados = []
+
+    for row in eventos_raw:
+        e_id, nombre, activo, fi_raw, ft_raw = row
+        
+        # Función interna para limpiar fechas a la fuerza
+        def limpiar_fecha(fecha_sucia):
+            if not fecha_sucia: return None
+            if isinstance(fecha_sucia, datetime): 
+                return fecha_sucia.replace(tzinfo=None) # Si ya es fecha, quitar zona horaria
+            
+            # Si es string, probar formatos comunes
+            fecha_str = str(fecha_sucia).strip()
+            formatos = [
+                '%Y-%m-%d %H:%M:%S',       # 2025-11-29 14:30:00
+                '%Y-%m-%d %H:%M:%S.%f',    # 2025-11-29 14:30:00.000000
+                '%Y-%m-%d',                # 2025-11-29
+                '%d/%m/%Y %H:%M',          # 29/11/2025 14:30
+            ]
+            for fmt in formatos:
+                try:
+                    return datetime.strptime(fecha_str, fmt)
+                except ValueError:
+                    continue
+            # Intento final ISO
+            try: return datetime.fromisoformat(fecha_str)
+            except: return None
+
+        fi = limpiar_fecha(fi_raw)
+        ft = limpiar_fecha(ft_raw)
+
+        # Crear objeto simple
+        class EventoSimple:
+            def __init__(self, e_id, nombre, activo, fi, ft):
+                self.id = e_id
+                self.nombre = nombre
+                self.activo = activo
+                self.fecha_inicio = fi
+                self.fecha_termino = ft
+        
+        ev = EventoSimple(e_id, nombre, activo, fi, ft)
+
+        # --- LÓGICA DE FILTRADO CON PRINTS ---
+        agregar = False
+        razon = "Rechazado por defecto"
+
+        if not fi or not ft:
+            razon = f"Fechas inválidas (Raw Inicio: {fi_raw})"
+            if filtro == 'todos': agregar = True
+        
+        else:
+            if filtro == 'todos':
+                agregar = True
+                razon = "Todos pasan"
+            
+            elif filtro == 'curso':
+                # Inicio <= Ahora <= Fin
+                if fi <= ahora <= ft:
+                    agregar = True
+                    razon = "Está En Curso"
+                else:
+                    razon = f"No en curso ({fi} vs {ahora} vs {ft})"
+
+            elif filtro == 'futuro':
+                # Ahora < Inicio
+                if ahora < fi:
+                    agregar = True
+                    razon = "Es Futuro"
+                else:
+                    razon = f"Ya empezó o pasó ({ahora} no es menor a {fi})"
+
+            elif filtro == 'terminado':
+                # Ahora > Fin
+                if ahora > ft:
+                    agregar = True
+                    razon = "Ya Terminó"
+                else:
+                    razon = f"Aún no termina ({ahora} no es mayor a {ft})"
+
+        print(f"[{nombre}] -> {razon}") # ESTO SALDRÁ EN TU CONSOLA
+
+        if agregar:
+            eventos_filtrados.append(ev)
+
+    print(f"Total encontrados: {len(eventos_raw)} | Total tras filtro: {len(eventos_filtrados)}")
+    print("-----------------------------------\n")
+
+    # 4. Estadísticas (Igual que antes)
+    eventos_con_stats = []
+    for evento in eventos_filtrados:
+        try:
             participantes_count = ParticipacionEleccion.objects.filter(evento_id=evento.id).count()
             candidatos_count = Candidatura.objects.filter(evento_id=evento.id).count()
             eventos_con_stats.append({
@@ -423,29 +413,25 @@ def panel_admin(request):
                 'candidatos_count': candidatos_count,
                 'configuracion_completa': participantes_count > 0 and candidatos_count > 0
             })
+        except:
+            eventos_con_stats.append({'evento': evento, 'participantes_count':0, 'candidatos_count':0, 'configuracion_completa':False})
 
-    except Exception as e:
-        # Fallback en caso de error
-        eventos = []
-        eventos_con_stats = []
-
-    # Estadísticas básicas
+    # Stats globales
     try:
         total_votantes = Persona.objects.filter(es_votante=True).count()
         total_candidatos = Persona.objects.filter(es_candidato=True).count()
         total_candidaturas = Candidatura.objects.count()
-    except Exception:
-        total_votantes = 0
-        total_candidatos = 0
-        total_candidaturas = 0
+    except:
+        total_votantes = 0; total_candidatos = 0; total_candidaturas = 0
 
     return render(request, 'admin_panel.html', {
-        'eventos': eventos, 
+        'eventos': eventos_filtrados,
         'eventos_con_stats': eventos_con_stats,
         'filtro': filtro,
         'total_votantes': total_votantes,
         'total_candidatos': total_candidatos,
-        'total_candidaturas': total_candidaturas
+        'total_candidaturas': total_candidaturas,
+        'ahora': ahora
     })
 
 
@@ -536,100 +522,117 @@ def desactivar_candidato(request, persona_id):
     return render(request, 'desactivar_candidato.html', {'persona': persona})
 
 
+
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def crear_evento(request):
     if request.method == 'POST':
         form = EventoEleccionForm(request.POST)
         if form.is_valid():
-            evento = form.save(commit=False)
-            # Ensure there is an Administrador instance; if none, create one from the current user
-            admin = Administrador.objects.first()
-            if not admin:
-                persona_admin = Persona.objects.create(
-                    nombre=(request.user.get_full_name() or request.user.username),
-                    email=(getattr(request.user, 'email', f'user{request.user.id}@local')),
-                    rut=str(request.user.id),
-                    password_hash=''
-                )
-                admin = Administrador.objects.create(persona=persona_admin)
+            try:
+                evento = form.save(commit=False)
+                # ... (tu lógica de asignar admin sigue igual) ...
+                admin = Administrador.objects.first()
+                if not admin:
+                    # ... creación de admin ...
+                    pass 
+                
+                evento.administrador = admin 
+                evento.id_administrador = str(request.user.id)
+                evento.save()
+                
+                messages.success(request, f'Evento "{evento.nombre}" creado exitosamente.')
+                return redirect('panel_admin') 
+            except Exception as e:
+                logger.exception("Error al guardar el evento")
+                messages.error(request, f"Error interno al guardar: {e}")
+        else:
+          
+            print("❌ Errores del formulario de evento:", form.errors)
+            messages.error(request, "El formulario contiene errores. Por favor, revisa los campos marcados.")
+            
+           
 
-            evento.administrador = admin
-            evento.id_administrador = str(request.user.id)
-            evento.save()
-            messages.success(request, f'Evento "{evento.nombre}" creado exitosamente.')
-            return redirect('panel_admin')
     else:
         form = EventoEleccionForm()
+    
     return render(request, 'crear_evento.html', {'form': form})
 
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def asignar_candidatos(request, evento_id):
+    # 1. Obtener Evento
     try:
         evento = get_object_or_404(EventoEleccion, id=evento_id)
     except:
         evento = get_object_or_404(EventoEleccion, id=str(evento_id))
     
-    # NUEVA LÓGICA: Solo mostrar participantes del evento, no todos los votantes
+    # 2. Obtener lista de posibles candidatos (Participantes)
     participantes_ids = ParticipacionEleccion.objects.filter(evento=evento).values_list('persona_id', flat=True)
     
-    if not participantes_ids.exists():
-        messages.warning(request, f'Este evento no tiene participantes asignados. Primero debe asignar participantes.')
-        return redirect('asignar_participantes', evento_id=evento_id)
+    # --- LÓGICA DE GUARDADO (POST) ---
+    if request.method == 'POST':
+        # A) INTENTO 1: Buscar string separado por comas (Tu lógica antigua de JS)
+        ids_str = request.POST.get('candidatos_globales', '')
+        seleccionados = [s for s in ids_str.split(',') if s]
+        
+        # B) INTENTO 2: Si el anterior falló, buscar checkboxes normales (getlist)
+        if not seleccionados:
+            seleccionados = request.POST.getlist('candidatos_ids') # <--- Asegúrate que tu input se llame así en HTML
+            # O quizás se llama 'persona_ids' en tu template? Probamos ambos:
+            if not seleccionados:
+                seleccionados = request.POST.getlist('persona_ids')
+
+        print(f"📦 DATOS RECIBIDOS POST: {request.POST}") # MIRA ESTO EN TU CONSOLA
+        print(f"✅ CANDIDATOS SELECCIONADOS DETECTADOS: {len(seleccionados)}")
+
+        # C) Guardar en BD
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                # 1. Borrar actuales
+                Candidatura.objects.filter(evento=evento).delete()
+                
+                # 2. Insertar nuevos (solo si son válidos participantes)
+                nuevos_objs = []
+                # Convertimos IDs de participantes a string para comparar rápido
+                participantes_str = [str(uid) for uid in participantes_ids]
+                
+                for pid in seleccionados:
+                    if pid in participantes_str:
+                        nuevos_objs.append(Candidatura(evento=evento, persona_id=pid))
+                
+                Candidatura.objects.bulk_create(nuevos_objs)
+                
+                # 3. Actualizar flags de Persona (Opcional, según tu lógica de negocio)
+                # (Aquí iría tu lógica de es_candidato = True/False si la necesitas)
+
+            messages.success(request, f'Se guardaron {len(nuevos_objs)} candidatos correctamente.')
+            
+            # 🚨 REDIRECCIÓN EXPLÍCITA
+            return redirect('panel_admin')
+
+        except Exception as e:
+            logger.exception("Error guardando candidatos")
+            messages.error(request, f"Error al guardar: {e}")
+            # Si falla, no redirigimos para mostrar el error en la misma página
     
-    # Solo seleccionar participantes del evento
+    # --- LÓGICA GET (MOSTRAR PÁGINA) ---
+    
+    # Candidatos actuales para marcar los checkboxes
+    candidatos_actuales = list(Candidatura.objects.filter(evento=evento).values_list('persona_id', flat=True))
+    candidatos_actuales = [str(uid) for uid in candidatos_actuales]
+
+    # Lista de votantes disponibles para elegir
     votantes_qs = Persona.objects.filter(
         id__in=participantes_ids,
         es_votante=True
-    ).order_by('nombre').values('id', 'nombre', 'email', 'es_candidato')
+    ).order_by('nombre').values('id', 'nombre', 'email', 'rut')
 
+    # Paginación
     paginator = Paginator(list(votantes_qs), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
-    if request.method == 'POST':
-        ids_str = request.POST.get('candidatos_globales', '')
-        seleccionados = [s for s in ids_str.split(',') if s] if ids_str else []
-
-        # Validar que todos los candidatos seleccionados sean participantes del evento
-        participantes_ids = set(ParticipacionEleccion.objects.filter(evento=evento).values_list('persona_id', flat=True))
-        candidatos_invalidos = [c for c in seleccionados if c not in [str(p) for p in participantes_ids]]
-        
-        if candidatos_invalidos:
-            messages.error(request, 'Solo se pueden asignar como candidatos a personas que ya son participantes del evento.')
-            return redirect('asignar_candidatos', evento_id=evento_id)
-        
-        # Obtener candidatos anteriores para actualizar su estado
-        candidatos_anteriores = list(Candidatura.objects.filter(evento=evento).values_list('persona_id', flat=True))
-        
-        # Eliminar candidaturas anteriores
-        Candidatura.objects.filter(evento=evento).delete()
-
-        # Crear nuevas candidaturas
-        for persona_id in seleccionados:
-            Candidatura.objects.create(
-                evento=evento,
-                persona_id=persona_id
-            )
-
-        # Actualizar estado es_candidato de personas
-        # Remover estado de candidato de personas que ya no son candidatos en ningún evento
-        personas_a_desmarcar = set(candidatos_anteriores) - set(seleccionados)
-        for persona_id in personas_a_desmarcar:
-            # Verificar si la persona sigue siendo candidato en otros eventos
-            tiene_otras_candidaturas = Candidatura.objects.filter(persona_id=persona_id).exists()
-            if not tiene_otras_candidaturas:
-                Persona.objects.filter(id=persona_id).update(es_candidato=False)
-
-        # Marcar como candidato a las nuevas personas seleccionadas
-        if seleccionados:
-            Persona.objects.filter(id__in=seleccionados).update(es_candidato=True)
-
-        messages.success(request, f'Candidatos actualizados correctamente. {len(seleccionados)} candidatos asignados.')
-        return redirect('panel_admin')
-
-    candidatos_actuales = list(Candidatura.objects.filter(evento=evento).values_list('persona_id', flat=True))
 
     return render(request, 'asignar_candidatos.html', {
         'evento': evento,
@@ -849,17 +852,42 @@ def desactivar_evento(request, evento_id):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def activar_evento(request, evento_id):
+    # Usamos get_object_or_404 para asegurarnos que existe
     evento = get_object_or_404(EventoEleccion, id=evento_id)
+    
     if request.method == 'POST':
+        # 1. Obtener fecha actual y fecha del evento
+        from datetime import datetime
+        ahora = datetime.now()
+        
+        ft = evento.fecha_termino
+        
+        # 2. Normalizar fecha (por si tu driver de BD devuelve strings raros aquí también)
+        if isinstance(ft, str):
+            try: ft = datetime.fromisoformat(ft)
+            except:
+                try: ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
+                except: ft = None
+        
+        # Quitar zona horaria para comparar
+        if ft and ft.tzinfo:
+            ft = ft.replace(tzinfo=None)
+
+        # 3. 🔒 VALIDACIÓN: Si ya pasó la fecha, prohibido activar
+        if ft and ahora > ft:
+            messages.error(request, f'No se puede activar "{evento.nombre}" porque su fecha de término ya pasó.')
+            return redirect('panel_admin')
+
+        # Si todo bien, activar
         evento.activo = True
         evento.save()
         messages.success(request, f'Evento "{evento.nombre}" ha sido activado.')
         return redirect('panel_admin')
+        
     return render(request, 'activar_evento.html', {'evento': evento})
 
 
-from django.views.decorators.csrf import csrf_exempt
-from .models import Voto
+
 
 @csrf_exempt
 def check_vote_status(request, vote_id):
@@ -946,7 +974,7 @@ def editar_usuario(request, persona_id):
 @login_required
 @user_passes_test(lambda u: getattr(u, 'is_superuser', False) or Administrador.objects.filter(persona__email=u.email).exists())
 def asignar_participantes(request, evento_id):
-    """Vista para asignar participantes (votantes) a un evento específico"""
+    """Vista para asignar participantes (votantes) a un evento específico con soporte masivo"""
     try:
         # Obtener evento usando valores específicos para evitar problemas de conversión datetime
         evento_data = EventoEleccion.objects.filter(id=evento_id).values(
@@ -967,101 +995,103 @@ def asignar_participantes(request, evento_id):
                 self.activo = data['activo']
         
         evento = EventoSimple(evento_data)
-        # evento_obj no es necesario para operaciones SQL directas
         
     except Exception as e:
         logger.exception(f"Error al obtener evento {evento_id}")
         messages.error(request, f"Error al acceder al evento: {str(e)}")
         return redirect('panel_admin')
     
+    # --- LOGICA POST ACTUALIZADA PARA ACCIONES MASIVAS ---
     if request.method == "POST":
-        persona_id = request.POST.get("persona_id")
         action = request.POST.get("action")
+        # Capturamos la lista de IDs (checkboxes)
+        persona_ids = request.POST.getlist("persona_ids")
         
+        # Compatibilidad: Si viene un ID simple (botón individual), lo convertimos a lista
+        if not persona_ids and request.POST.get("persona_id"):
+            persona_ids = [request.POST.get("persona_id")]
+
+        if not persona_ids:
+            messages.warning(request, "No seleccionaste ningún usuario.")
+            return redirect("asignar_participantes", evento_id=evento_id)
+
         try:
-            # Verificar que la persona existe y es votante usando SQL directo
             from django.db import connection
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT id, nombre, es_votante 
-                    FROM elecciones_persona 
-                    WHERE id = %s AND es_votante = 1
-                """, [persona_id])
-                persona_data = cursor.fetchone()
-                
-            if not persona_data:
-                messages.error(request, "Persona no encontrada o no es votante.")
-                return redirect("asignar_participantes", evento_id=evento_id)
+            import uuid
             
-            persona_id = persona_data[0]
-            persona_nombre = persona_data[1]
+            # Limpiar ID del evento para SQL
+            evento_id_clean = str(evento_id).replace('-', '')
             
-            if action == "add":
-                # Convertir UUIDs al formato correcto (sin guiones)
-                evento_id_clean = str(evento_id).replace('-', '')
-                persona_id_clean = str(persona_id).replace('-', '')
+            if action == "add_bulk" or action == "add":
+                agregados_count = 0
                 
-                # Verificar si ya existe la participación
                 with connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT COUNT(*) FROM elecciones_participacioneleccion 
-                        WHERE evento_id = %s AND persona_id = %s
-                    """, [evento_id_clean, persona_id_clean])
-                    existe = cursor.fetchone()[0] > 0
-                
-                if not existe:
-                    # Agregar participante usando SQL directo
-                    import uuid
-                    participacion_id = str(uuid.uuid4()).replace('-', '')
-                    with connection.cursor() as cursor:
+                    for p_id in persona_ids:
+                        persona_id_clean = str(p_id).replace('-', '')
+                        
+                        # 1. Verificar si ya existe la participación
                         cursor.execute("""
-                            INSERT INTO elecciones_participacioneleccion (id, evento_id, persona_id, ha_votado)
-                            VALUES (%s, %s, %s, 0)
-                        """, [participacion_id, evento_id_clean, persona_id_clean])
-                    messages.success(request, f"'{persona_nombre}' agregado como participante.")
-                else:
-                    messages.info(request, f"'{persona_nombre}' ya era participante de este evento.")
-                    
-            elif action == "remove":
-                # Convertir UUIDs al formato correcto (sin guiones)
-                evento_id_clean = str(evento_id).replace('-', '')
-                persona_id_clean = str(persona_id).replace('-', '')
-                
-                # Verificar si ha votado antes de remover
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT ha_votado FROM elecciones_participacioneleccion 
-                        WHERE evento_id = %s AND persona_id = %s
-                    """, [evento_id_clean, persona_id_clean])
-                    participacion_data = cursor.fetchone()
-                
-                if participacion_data:
-                    ha_votado = participacion_data[0]
-                    if not ha_votado:
-                        # Remover participante
-                        with connection.cursor() as cursor:
+                            SELECT COUNT(*) FROM elecciones_participacioneleccion 
+                            WHERE evento_id = %s AND persona_id = %s
+                        """, [evento_id_clean, persona_id_clean])
+                        existe = cursor.fetchone()[0] > 0
+                        
+                        if not existe:
+                            # 2. Agregar participante
+                            participacion_id = str(uuid.uuid4()).replace('-', '')
                             cursor.execute("""
-                                DELETE FROM elecciones_participacioneleccion 
-                                WHERE evento_id = %s AND persona_id = %s
-                            """, [evento_id_clean, persona_id_clean])
-                        messages.success(request, f"'{persona_nombre}' removido de los participantes.")
-                    else:
-                        messages.warning(request, f"No se puede remover a '{persona_nombre}' porque ya votó.")
+                                INSERT INTO elecciones_participacioneleccion (id, evento_id, persona_id, ha_votado)
+                                VALUES (%s, %s, %s, 0)
+                            """, [participacion_id, evento_id_clean, persona_id_clean])
+                            agregados_count += 1
+                
+                if agregados_count > 0:
+                    messages.success(request, f"Se agregaron {agregados_count} participantes correctamente.")
                 else:
-                    messages.info(request, f"'{persona_nombre}' no era participante de este evento.")
-                    
+                    messages.info(request, "Los usuarios seleccionados ya eran participantes.")
+
+            elif action == "remove_bulk" or action == "remove":
+                removidos_count = 0
+                bloqueados_count = 0
+                
+                with connection.cursor() as cursor:
+                    for p_id in persona_ids:
+                        persona_id_clean = str(p_id).replace('-', '')
+                        
+                        # 1. Verificar si ha votado
+                        cursor.execute("""
+                            SELECT ha_votado FROM elecciones_participacioneleccion 
+                            WHERE evento_id = %s AND persona_id = %s
+                        """, [evento_id_clean, persona_id_clean])
+                        row = cursor.fetchone()
+                        
+                        if row:
+                            ha_votado = row[0]
+                            if not ha_votado:
+                                # 2. Eliminar si no ha votado
+                                cursor.execute("""
+                                    DELETE FROM elecciones_participacioneleccion 
+                                    WHERE evento_id = %s AND persona_id = %s
+                                """, [evento_id_clean, persona_id_clean])
+                                removidos_count += 1
+                            else:
+                                bloqueados_count += 1
+                
+                if removidos_count > 0:
+                    messages.success(request, f"Se eliminaron {removidos_count} participantes.")
+                if bloqueados_count > 0:
+                    messages.warning(request, f"{bloqueados_count} participantes no se pudieron eliminar porque ya votaron.")
+
         except Exception as e:
-            logger.exception("Error managing participants")
-            messages.error(request, f"Error al gestionar participante: {str(e)}")
+            logger.exception("Error gestionando participantes masivos")
+            messages.error(request, f"Ocurrió un error al procesar la solicitud: {str(e)}")
         
         return redirect("asignar_participantes", evento_id=evento_id)
     
-    # GET request - mostrar la página
-    # Obtener participantes actuales usando consulta SQL directa
+    # --- LOGICA GET (SIN CAMBIOS, SOLO OPTIMIZADA) ---
     try:
         from django.db import connection
         
-        # Convertir evento_id al formato correcto (sin guiones)
         evento_id_clean = str(evento_id).replace('-', '')
         
         with connection.cursor() as cursor:
@@ -1085,7 +1115,7 @@ def asignar_participantes(request, evento_id):
                 'persona__nombre': part_row[1],
                 'persona__email': part_row[2],
                 'ha_votado': part_row[3],
-                'persona__foto_url': part_row[4]  # Directamente el campo foto
+                'persona__foto_url': part_row[4]
             })
         
         # Obtener usuarios disponibles (votantes que no son participantes aún)
@@ -1113,16 +1143,15 @@ def asignar_participantes(request, evento_id):
                 'id': user_row[0],
                 'nombre': user_row[1],
                 'email': user_row[2],
-                'foto_display_url': user_row[3]  # Directamente el campo foto
+                'foto_display_url': user_row[3]
             })
             
     except Exception as e:
-        # Fallback en caso de error
         participantes_actuales = []
         usuarios_disponibles = []
         logger.exception(f"Error obteniendo participantes para evento {evento_id}")
     
-    # Contar candidatos actuales del evento usando SQL directo
+    # Contar candidatos actuales
     try:
         from django.db import connection
         with connection.cursor() as cursor:

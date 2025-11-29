@@ -1,175 +1,245 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Asignar Candidatos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <h2>Asignar Candidatos</h2>
-                <p class="text-muted">Evento: <strong>{{ evento.nombre }}</strong></p>
-                <p class="text-muted">Fecha: {{ evento.fecha_inicio|date:"d/m/Y H:i" }} a {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
-                <div class="alert alert-info mt-3">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>Nota:</strong> Solo puedes elegir candidatos de entre los participantes ya asignados a este evento.
-                    <a href="{% url 'asignar_participantes' evento.id %}" class="alert-link">Gestionar participantes</a>
+{% extends 'base.html' %}
+
+{% block title %}Asignar Candidatos | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto mt-10">
+        
+        <div class="md:flex md:items-center md:justify-between mb-6">
+            <div class="min-w-0 flex-1">
+                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+                    Asignar Candidatos
+                </h2>
+                <div class="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:space-x-6">
+                    <div class="mt-2 flex items-center text-sm text-gray-500">
+                        <i class="bi bi-calendar-event mr-1.5 flex-shrink-0 text-gray-400"></i>
+                        Evento: <strong class="ml-1 text-gray-900">{{ evento.nombre }}</strong>
+                    </div>
+                    <div class="mt-2 flex items-center text-sm text-gray-500">
+                        <i class="bi bi-clock mr-1.5 flex-shrink-0 text-gray-400"></i>
+                        {{ evento.fecha_inicio|date:"d/m/Y H:i" }} a {{ evento.fecha_termino|date:"d/m/Y H:i" }}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- JSON seguro con los IDs seleccionados (UUIDs) -->
+        <div class="rounded-md bg-blue-50 p-4 mb-6 border border-blue-100 shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="bi bi-info-circle text-blue-400"></i>
+                </div>
+                <div class="ml-3 flex-1 md:flex md:justify-between">
+                    <p class="text-sm text-blue-700">
+                        <strong>Nota:</strong> Solo puedes elegir candidatos de entre los participantes ya asignados a este evento.
+                    </p>
+                    <p class="mt-3 text-sm md:ml-6 md:mt-0">
+                        <a href="{% url 'asignar_participantes' evento.id %}" class="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600 transition">
+                            Gestionar participantes <span aria-hidden="true">&rarr;</span>
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
         {{ candidatos_actuales|json_script:"initial-selected" }}
 
         <form method="post" id="form-asignar">
             {% csrf_token %}
             <input type="hidden" name="candidatos_globales" id="candidatos_globales">
 
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Seleccionar Participantes como Candidatos</h5>
-                    <small>Solo se muestran los participantes asignados a este evento</small>
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6 border border-gray-200">
+                <div class="px-4 py-5 border-b border-gray-200 sm:px-6 bg-gray-50">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                Seleccionar Participantes
+                            </h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                                Marca las casillas de las personas que serán candidatos.
+                            </p>
+                        </div>
+                        
+                        <div class="relative w-full sm:w-64">
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <i class="bi bi-search text-gray-400"></i>
+                            </div>
+                            <input type="text" id="buscador-candidatos" 
+                                   class="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm sm:leading-6" 
+                                   placeholder="Buscar por nombre o email...">
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
+                
+                <div class="px-4 py-5 sm:p-6">
                     {% if page_obj %}
-                        <div class="mb-3">
+                        <div class="space-y-2" id="lista-participantes">
                             {% for persona in page_obj %}
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           name="candidatos" 
-                                           value="{{ persona.id }}"
-                                           id="persona_{{ persona.id }}">
-                                    <label class="form-check-label" for="persona_{{ persona.id }}">
-                                        <strong>{{ persona.nombre }}</strong>
-                                        {% if persona.es_candidato %}
-                                            <span class="badge bg-success ms-2">Candidato</span>
-                                        {% endif %}
-                                        {% if persona.email %}
-                                            <br><small class="text-muted">{{ persona.email }}</small>
-                                        {% endif %}
-                                    </label>
+                                <div class="participante-item relative flex items-start p-3 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all duration-150"
+                                     data-search="{{ persona.nombre|lower }} {{ persona.email|lower }}">
+                                    <div class="flex h-5 items-center">
+                                        <input id="persona_{{ persona.id }}" 
+                                               name="candidatos_ids" 
+                                               value="{{ persona.id }}" 
+                                               type="checkbox" 
+                                               class="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer">
+                                    </div>
+                                    <div class="ml-3 text-sm w-full">
+                                        <label for="persona_{{ persona.id }}" class="font-medium text-gray-700 cursor-pointer select-none w-full block">
+                                            {{ persona.nombre }}
+                                            {% if persona.es_candidato %}
+                                                <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 ml-2">
+                                                    Candidato Activo
+                                                </span>
+                                            {% endif %}
+                                            {% if persona.email %}
+                                                <p class="text-gray-500 font-normal mt-0.5">{{ persona.email }}</p>
+                                            {% endif %}
+                                        </label>
+                                    </div>
                                 </div>
                             {% endfor %}
                         </div>
+                        
+                        <div id="no-results" class="hidden text-center py-8 text-gray-500">
+                            <i class="bi bi-search text-2xl block mb-2 opacity-50"></i>
+                            <p>No se encontraron participantes que coincidan con tu búsqueda.</p>
+                        </div>
+
                     {% else %}
-                        <div class="alert alert-warning">
-                            <h6><i class="bi bi-exclamation-triangle"></i> No hay participantes disponibles</h6>
-                            <p class="mb-2">Este evento no tiene participantes asignados aún. Para poder elegir candidatos, primero debes:</p>
-                            <ol class="mb-3">
-                                <li>Asignar participantes al evento</li>
-                                <li>Luego regresar aquí para elegir candidatos de entre esos participantes</li>
-                            </ol>
-                            <a href="{% url 'asignar_participantes' evento.id %}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-person-plus"></i> Asignar Participantes Primero
-                            </a>
+                        <div class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                            <i class="bi bi-people text-gray-400 text-4xl mb-3 block"></i>
+                            <h3 class="mt-2 text-sm font-semibold text-gray-900">No hay participantes disponibles</h3>
+                            <p class="mt-1 text-sm text-gray-500">Este evento no tiene participantes asignados aún.</p>
+                            <div class="mt-6">
+                                <a href="{% url 'asignar_participantes' evento.id %}" class="inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 transition">
+                                    <i class="bi bi-person-plus mr-2"></i> Asignar Participantes Primero
+                                </a>
+                            </div>
                         </div>
                     {% endif %}
                 </div>
+
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="px-4 py-3 border-t border-gray-200 sm:px-6 bg-gray-50">
+                    <nav class="flex items-center justify-between" aria-label="Pagination">
+                        <div class="hidden sm:block">
+                            <p class="text-sm text-gray-700">
+                                Mostrando página <span class="font-medium">{{ page_obj.number }}</span> de <span class="font-medium">{{ page_obj.paginator.num_pages }}</span>
+                            </p>
+                        </div>
+                        <div class="flex flex-1 justify-between sm:justify-end gap-2">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 transition">
+                                    Anterior
+                                </a>
+                            {% else %}
+                                <button disabled class="relative inline-flex items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400 ring-1 ring-inset ring-gray-200 cursor-not-allowed">
+                                    Anterior
+                                </button>
+                            {% endif %}
+                            
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 transition">
+                                    Siguiente
+                                </a>
+                            {% else %}
+                                <button disabled class="relative inline-flex items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-400 ring-1 ring-inset ring-gray-200 cursor-not-allowed">
+                                    Siguiente
+                                </button>
+                            {% endif %}
+                        </div>
+                    </nav>
+                </div>
+                {% endif %}
             </div>
 
-            <!-- Paginación -->
-            {% if page_obj.paginator.num_pages > 1 %}
-                <nav aria-label="Paginación de votantes">
-                    <ul class="pagination mb-4">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page=1">Primera</a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link">Primera</span>
-                            </li>
-                            <li class="page-item disabled">
-                                <span class="page-link">Anterior</span>
-                            </li>
-                        {% endif %}
-
-                        <li class="page-item active">
-                            <span class="page-link">
-                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                            </span>
-                        </li>
-
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link">Siguiente</span>
-                            </li>
-                            <li class="page-item disabled">
-                                <span class="page-link">Última</span>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            {% endif %}
-
-            <!-- Botones de acción -->
-            <div class="d-grid gap-2 d-sm-flex">
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="bi bi-check-circle"></i> Guardar Candidatos
-                </button>
-                <a href="{% url 'panel_admin' %}" class="btn btn-secondary btn-lg">
-                    <i class="bi bi-x-circle"></i> Cancelar
+            <div class="flex justify-end gap-3 pb-10">
+                <a href="{% url 'panel_admin' %}" class="bg-white py-2.5 px-5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
+                    <i class="bi bi-x-lg mr-2"></i> Cancelar
                 </a>
+                <button type="submit" class="inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                    <i class="bi bi-check-lg mr-2"></i> Guardar Candidatos
+                </button>
             </div>
         </form>
     </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const eventoId = '{{ evento.id }}';
-    const STORAGE_KEY = 'candidatos_evento_' + eventoId;
-    const form = document.getElementById('form-asignar');
-    const hiddenField = document.getElementById('candidatos_globales');
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const eventoId = '{{ evento.id }}';
+        const STORAGE_KEY = 'candidatos_evento_' + eventoId;
+        const form = document.getElementById('form-asignar');
+        const hiddenField = document.getElementById('candidatos_globales');
+        
+        // --- LÓGICA DE BÚSQUEDA ---
+        const buscador = document.getElementById('buscador-candidatos');
+        const listaItems = document.querySelectorAll('.participante-item');
+        const noResults = document.getElementById('no-results');
 
-    // Recuperar selección previa del localStorage
-    let globalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+        if (buscador) {
+            buscador.addEventListener('keyup', (e) => {
+                const term = e.target.value.toLowerCase();
+                let visibleCount = 0;
 
-    // Fusionar con selección inicial del servidor
-    const initialSelected = JSON.parse(document.getElementById('initial-selected').textContent || '[]');
-    if (globalSet.size === 0 && initialSelected.length > 0) {
+                listaItems.forEach(item => {
+                    const data = item.getAttribute('data-search');
+                    if (data.includes(term)) {
+                        item.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Mostrar/Ocultar mensaje de "No encontrado"
+                if (visibleCount === 0 && listaItems.length > 0) {
+                    noResults.classList.remove('hidden');
+                } else {
+                    noResults.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- LÓGICA DE SELECCIÓN (Preservada y Mejorada) ---
+        // Recuperar selección previa del localStorage
+        let globalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+
+        // Fusionar con selección inicial del servidor (si localStorage está vacío o es la primera carga)
+        const initialSelected = JSON.parse(document.getElementById('initial-selected').textContent || '[]');
+        
+        // Sincronizar iniciales: Agregar los del servidor al Set si no están
         initialSelected.forEach(id => globalSet.add(String(id)));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
-    }
 
-    // Al cargar, marcar checkboxes según el set global
-    document.querySelectorAll('input[name="candidatos"]').forEach(cb => {
-        cb.checked = globalSet.has(cb.value);
+        // Marcar checkboxes visibles según el set global
+        const checkboxes = document.querySelectorAll('input[name="candidatos_ids"]');
+        
+        checkboxes.forEach(cb => {
+            cb.checked = globalSet.has(cb.value);
 
-        cb.addEventListener('change', () => {
-            if (cb.checked) {
-                globalSet.add(cb.value);
-            } else {
-                globalSet.delete(cb.value);
-            }
-            // Guardar siempre el estado global en localStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
-            hiddenField.value = Array.from(globalSet).join(',');
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    globalSet.add(cb.value);
+                } else {
+                    globalSet.delete(cb.value);
+                }
+                // Guardar estado
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(globalSet)));
+                // Actualizar campo oculto (fallback)
+                hiddenField.value = Array.from(globalSet).join(',');
+            });
+        });
+
+        // Sincronizar al inicio
+        hiddenField.value = Array.from(globalSet).join(',');
+
+        // Antes de enviar, asegurar que el campo oculto tenga TODO (incluido lo paginado)
+        form.addEventListener('submit', (e) => {
+            const finalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
+            hiddenField.value = Array.from(finalSet).join(',');
+            // Nota: La vista ahora es inteligente y buscará 'candidatos_globales' primero
+            // y si falla buscará 'candidatos_ids'.
         });
     });
-
-    // Al cargar la página, sincronizar el campo oculto con localStorage
-    hiddenField.value = Array.from(globalSet).join(',');
-
-    // Antes de enviar, leer directamente de localStorage y volcar TODO al campo oculto
-    form.addEventListener('submit', (e) => {
-        const finalSet = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
-        hiddenField.value = Array.from(finalSet).join(',');
-    });
-});
-</script>
-
-</body>
-</html>
+    </script>
+{% endblock %}

@@ -1,45 +1,135 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-gray-50">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Votación - Acceso Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Admin | Sistema de Votación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f4f6fc; }
-        .login-box {
-            max-width: 400px;
-            margin: 80px auto;
-            padding: 30px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .login-title {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        .bg-purple-custom { background-color: #8b5cf6; }
+        .text-purple-custom { color: #8b5cf6; }
+        .hover\:bg-purple-dark:hover { background-color: #7c3aed; }
+        .focus\:ring-purple-custom:focus { --tw-ring-color: #8b5cf6; }
     </style>
 </head>
-<body>
-    <div class="login-box">
-        <h3 class="login-title">Sistema de Votación<br><small class="text-muted">Acceso Admin</small></h3>
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                {{ form.username.label_tag }}
-                {{ form.username }}
-            </div>
-            <div class="mb-3">
-                {{ form.password.label_tag }}
-                {{ form.password }}
-            </div>
-            {% if error %}
-                <div class="alert alert-danger">{{ error }}</div>
-            {% endif %}
-            <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-           <a href="{% url 'login_votante' %}" class="btn btn-outline-primary">Ir al login de usuario</a>
+<body class="h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
 
-        </form>
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <!-- Icono o Logo -->
+        <div class="mx-auto h-12 w-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 text-2xl">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sistema de Votación
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            Panel de Administración
+        </p>
     </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow-xl ring-1 ring-gray-900/5 sm:rounded-lg sm:px-10">
+            <form class="space-y-6" method="post" id="loginForm">
+                {% csrf_token %}
+
+                <!-- Mensaje de Error -->
+                {% if error %}
+                    <div class="rounded-md bg-red-50 p-4 border border-red-200 animate-pulse">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-x-circle-fill text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">Error de acceso</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <p>{{ error }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Campo Usuario -->
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Usuario / RUT
+                    </label>
+                    <div class="mt-1 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-person text-gray-400"></i>
+                        </div>
+                        {{ form.username }}
+                    </div>
+                </div>
+
+                <!-- Campo Contraseña -->
+                <div>
+                    <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Contraseña
+                    </label>
+                    <div class="mt-1 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-key text-gray-400"></i>
+                        </div>
+                        {{ form.password }}
+                    </div>
+                </div>
+
+                <!-- Botón Entrar -->
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-custom hover:bg-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition duration-150 ease-in-out">
+                        Ingresar al Panel
+                    </button>
+                </div>
+            </form>
+
+            <!-- Divisor -->
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">
+                            ¿No eres administrador?
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Enlace a Login Usuario -->
+                <div class="mt-6">
+                    <a href="{% url 'login_votante' %}" class="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition duration-150 ease-in-out">
+                        <i class="bi bi-person-badge mr-2 text-gray-400"></i>
+                        Ir al acceso de Votantes
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer simple -->
+        <p class="text-center text-xs text-gray-400 mt-8">
+            &copy; 2025 Sistema de Votación Seguro
+        </p>
+    </div>
+
+    <!-- Script para estilizar los inputs de Django automáticamente -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputs = document.querySelectorAll('#loginForm input');
+            inputs.forEach(input => {
+                // Añadimos clases Tailwind + padding left extra (pl-10) para dejar espacio al icono
+                input.classList.add(
+                    'block', 'w-full', 'pl-10', 'pr-3', 'py-2', 
+                    'border', 'border-gray-300', 'rounded-md', 
+                    'leading-5', 'bg-white', 'placeholder-gray-500', 
+                    'focus:outline-none', 'focus:placeholder-gray-400', 
+                    'focus:ring-1', 'focus:ring-purple-custom', 'focus:border-purple-custom', 
+                    'sm:text-sm', 'transition', 'duration-150', 'ease-in-out'
+                );
+            });
+        });
+    </script>
 </body>
 </html>

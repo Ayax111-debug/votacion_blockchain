@@ -1,253 +1,223 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Editar Usuario</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .photo-preview {
-            max-width: 150px;
-            max-height: 150px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid #dee2e6;
-        }
-        .photo-upload-area {
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            background-color: #f8f9fa;
-            transition: all 0.3s ease;
-        }
-        .photo-upload-area:hover {
-            border-color: #0d6efd;
-            background-color: #e7f3ff;
-        }
-        .photo-upload-area.dragover {
-            border-color: #0d6efd;
-            background-color: #e7f3ff;
-        }
-        .current-photo {
-            max-width: 100px;
-            max-height: 100px;
-            object-fit: cover;
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="mb-0">Editar Usuario: {{ persona.nombre }}</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" enctype="multipart/form-data">
-                            {% csrf_token %}
+{% extends 'base.html' %}
+
+{% block title %}Editar Usuario | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-3xl mx-auto mt-10 mb-12">
+        
+        <!-- Encabezado -->
+        <div class="mb-8 text-center">
+            <div class="mx-auto h-14 w-14 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-3xl mb-4 shadow-sm">
+                <i class="bi bi-person-gear"></i>
+            </div>
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900">
+                Editar Usuario
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Actualizando información de <span class="font-bold text-gray-800">{{ persona.nombre }}</span>
+            </p>
+        </div>
+
+        <div class="bg-white shadow-xl sm:rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-6 sm:p-8">
+                <form method="post" enctype="multipart/form-data" id="editUserForm" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Sección de Foto (Drag & Drop) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Foto de Perfil</label>
+                        
+                        <div class="flex flex-col sm:flex-row gap-6 items-start">
                             
-                            <!-- Sección de Foto -->
-                            <div class="mb-4">
-                                <label class="form-label">Foto de Perfil</label>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        {% if persona.foto_display_url %}
-                                            <div class="mb-3">
-                                                <p class="text-muted">Foto actual:</p>
-                                                <img src="{{ persona.foto_display_url }}" alt="Foto actual" class="current-photo">
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <div class="photo-upload-area" id="photoUploadArea">
-                                            <div id="photoPreview" style="display: none;">
-                                                <img id="previewImg" src="" alt="Vista previa" class="photo-preview mb-2">
-                                                <br>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePhoto()">
-                                                    Eliminar nueva foto
-                                                </button>
-                                            </div>
-                                            <div id="uploadPrompt">
-                                                <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
-                                                <p class="mb-2">Arrastra una nueva foto aquí o</p>
-                                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('id_foto').click()">
-                                                    Seleccionar Archivo
-                                                </button>
-                                                <small class="text-muted d-block mt-2">
-                                                    JPG, PNG o GIF (máx. 5MB)<br>
-                                                    Dejar vacío para mantener la actual
-                                                </small>
-                                            </div>
-                                        </div>
+                            <!-- Foto Actual (Si existe) -->
+                            {% if persona.foto_display_url %}
+                                <div class="flex-shrink-0 text-center">
+                                    <p class="text-xs text-gray-500 mb-2">Actual</p>
+                                    <img src="{{ persona.foto_display_url }}" alt="Foto actual" class="h-32 w-32 object-cover rounded-lg border border-gray-200 shadow-sm ring-2 ring-offset-2 ring-gray-100">
+                                </div>
+                            {% endif %}
+
+                            <!-- Zona de Carga -->
+                            <div class="flex-grow w-full">
+                                <div id="photoUploadArea" class="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors duration-200 ease-in-out cursor-pointer group">
+                                    
+                                    <!-- Input Oculto -->
+                                    <div class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
                                         {{ form.foto }}
-                                        {% if form.foto.errors %}
-                                            {% for error in form.foto.errors %}
-                                                <div class="text-danger small mt-1">{{ error }}</div>
-                                            {% endfor %}
-                                        {% endif %}
                                     </div>
-                                    <div class="col-md-8">
-                                        <div class="mb-3">
-                                            <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre Completo *</label>
-                                            {{ form.nombre }}
-                                            {% if form.nombre.errors %}
-                                                {% for error in form.nombre.errors %}
-                                                    <div class="text-danger small">{{ error }}</div>
-                                                {% endfor %}
-                                            {% endif %}
+
+                                    <!-- Estado Inicial: Prompt de Carga -->
+                                    <div id="uploadPrompt" class="space-y-2 transition-opacity duration-200">
+                                        <div class="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors">
+                                            <i class="bi bi-cloud-arrow-up text-4xl"></i>
                                         </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="{{ form.email.id_for_label }}" class="form-label">Email *</label>
-                                            {{ form.email }}
-                                            {% if form.email.errors %}
-                                                {% for error in form.email.errors %}
-                                                    <div class="text-danger small">{{ error }}</div>
-                                                {% endfor %}
-                                            {% endif %}
+                                        <div class="text-sm text-gray-600">
+                                            <span class="font-medium text-blue-600 hover:text-blue-500">Sube un archivo</span> o arrástralo aquí
                                         </div>
+                                        <p class="text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
+                                    </div>
+
+                                    <!-- Estado: Vista Previa (Oculto por defecto) -->
+                                    <div id="photoPreview" class="hidden relative z-20">
+                                        <img id="previewImg" src="" alt="Vista previa" class="mx-auto h-40 w-40 object-cover rounded-lg border border-gray-200 shadow-md">
+                                        <button type="button" onclick="removePhoto(event)" class="mt-3 inline-flex items-center px-3 py-1.5 border border-red-200 shadow-sm text-xs font-medium rounded text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition">
+                                            <i class="bi bi-trash mr-1.5"></i> Quitar foto nueva
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="{{ form.rut.id_for_label }}" class="form-label">RUT *</label>
-                                {{ form.rut }}
-                                {% if form.rut.errors %}
-                                    {% for error in form.rut.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
+                                {% if form.foto.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.foto.errors.0 }}</p>
                                 {% endif %}
                             </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Tipo de Usuario *</label>
-                                <div class="form-check">
-                                    {{ form.es_votante }}
-                                    <label class="form-check-label" for="{{ form.es_votante.id_for_label }}">
-                                        Votante (puede participar en votaciones)
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    {{ form.es_candidato }}
-                                    <label class="form-check-label" for="{{ form.es_candidato.id_for_label }}">
-                                        Candidato (puede ser elegido)
-                                    </label>
-                                </div>
-                                {% if form.es_votante.errors %}
-                                    {% for error in form.es_votante.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                                {% if form.es_candidato.errors %}
-                                    {% for error in form.es_candidato.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                            
-                            {% if messages %}
-                                {% for message in messages %}
-                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                            
-                            {% if form.non_field_errors %}
-                                {% for error in form.non_field_errors %}
-                                    <div class="alert alert-danger">{{ error }}</div>
-                                {% endfor %}
-                            {% endif %}
-                            
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
-                            </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
+
+                    <div class="border-t border-gray-100 pt-6 space-y-6">
+                        <!-- Nombre -->
+                        <div>
+                            <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                            <div class="mt-1">
+                                {{ form.nombre }}
+                            </div>
+                            {% if form.nombre.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.nombre.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
+                            <div class="mt-1">
+                                {{ form.email }}
+                            </div>
+                            {% if form.email.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- RUT -->
+                        <div>
+                            <label for="{{ form.rut.id_for_label }}" class="block text-sm font-medium text-gray-700">RUT</label>
+                            <div class="mt-1">
+                                {{ form.rut }}
+                            </div>
+                            {% if form.rut.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ form.rut.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="pt-6 border-t border-gray-100 flex items-center justify-end gap-x-4">
+                        <a href="{% url 'panel_admin' %}" class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex justify-center rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition transform active:scale-95">
+                            <i class="bi bi-check2-all mr-2"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Scripts para Estilos y Funcionalidad -->
     <script>
-        // Manejar la vista previa de la foto
-        const photoInput = document.getElementById('id_foto');
+        // 1. Estilizar Inputs Automáticamente
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputs = document.querySelectorAll('#editUserForm input[type="text"], #editUserForm input[type="email"]');
+            inputs.forEach(input => {
+                input.classList.add(
+                    'block', 'w-full', 'rounded-md', 'border-0', 'py-2.5', 'text-gray-900', 
+                    'shadow-sm', 'ring-1', 'ring-inset', 'ring-gray-300', 
+                    'placeholder:text-gray-400', 'focus:ring-2', 'focus:ring-inset', 
+                    'focus:ring-blue-600', 'sm:text-sm', 'sm:leading-6'
+                );
+            });
+        });
+
+        // 2. Lógica de Drag & Drop y Vista Previa
+        const photoInput = document.querySelector('input[name="foto"]'); // O el ID que genere Django
         const uploadArea = document.getElementById('photoUploadArea');
         const preview = document.getElementById('photoPreview');
         const previewImg = document.getElementById('previewImg');
         const uploadPrompt = document.getElementById('uploadPrompt');
 
-        // Eventos para drag & drop
-        uploadArea.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
+        // Funciones de ayuda visual para Drag & Drop
+        function highlight() {
+            uploadArea.classList.add('border-blue-500', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+            uploadArea.classList.remove('border-gray-300');
+        }
+
+        function unhighlight() {
+            uploadArea.classList.remove('border-blue-500', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+            uploadArea.classList.add('border-gray-300');
+        }
+
+        // Eventos Drag & Drop
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                highlight();
+            }, false);
         });
 
-        uploadArea.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                unhighlight();
+            }, false);
         });
 
-        uploadArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
+        // Manejo del archivo al soltar
+        uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
             if (files.length > 0) {
-                handleFile(files[0]);
+                handleFiles(files[0]);
+                // Asignar al input file real (hack necesario para que se envíe el form)
+                photoInput.files = files;
             }
         });
 
-        // Evento para selección manual de archivo
-        photoInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
+        // Manejo del archivo al seleccionar con click (el input file está encima)
+        photoInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                handleFiles(this.files[0]);
             }
         });
 
-        function handleFile(file) {
-            // Validar tipo de archivo
+        function handleFiles(file) {
+            // Validaciones simples
             const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
             if (!allowedTypes.includes(file.type)) {
-                alert('Solo se permiten archivos JPG, PNG o GIF');
+                alert('Solo se permiten imágenes (JPG, PNG, GIF)');
                 return;
             }
-
-            // Validar tamaño (5MB max)
             if (file.size > 5 * 1024 * 1024) {
-                alert('El archivo debe ser menor a 5MB');
+                alert('El archivo es demasiado grande (Max 5MB)');
                 return;
             }
 
-            // Crear vista previa
+            // Mostrar vista previa
             const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImg.src = e.target.result;
-                preview.style.display = 'block';
-                uploadPrompt.style.display = 'none';
-            };
             reader.readAsDataURL(file);
-
-            // Asignar archivo al input
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            photoInput.files = dataTransfer.files;
+            reader.onloadend = function() {
+                previewImg.src = reader.result;
+                uploadPrompt.classList.add('hidden');
+                preview.classList.remove('hidden');
+            }
         }
 
-        function removePhoto() {
-            photoInput.value = '';
-            preview.style.display = 'none';
-            uploadPrompt.style.display = 'block';
+        // Función para resetear
+        window.removePhoto = function(event) {
+            event.preventDefault(); // Prevenir comportamiento burbuja
+            photoInput.value = ''; // Limpiar input
             previewImg.src = '';
+            preview.classList.add('hidden');
+            uploadPrompt.classList.remove('hidden');
         }
-
-        // Ocultar el input de archivo original
-        photoInput.style.display = 'none';
     </script>
-</body>
-</html>
+{% endblock %}

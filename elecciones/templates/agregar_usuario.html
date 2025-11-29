@@ -1,95 +1,150 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Agregar Usuario</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="mb-0">Agregar Nuevo Usuario</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            <!-- Sección de Foto -->
-                            <div class="mb-4">
-                                <label for="{{ form.foto.id_for_label }}" class="form-label">Foto de Perfil</label>
-                                {{ form.foto }}
-                                {% if form.foto.errors %}
-                                    {% for error in form.foto.errors %}
-                                        <div class="text-danger small mt-1">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                                <small class="form-text text-muted">
-                                    JPG, PNG o GIF (máx. 5MB)
-                                </small>
-                            </div>
+{% extends 'base.html' %}
 
-                            <div class="mb-3">
-                                <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre Completo *</label>
-                                {{ form.nombre }}
-                                {% if form.nombre.errors %}
-                                    {% for error in form.nombre.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">Email *</label>
-                                {{ form.email }}
-                                {% if form.email.errors %}
-                                    {% for error in form.email.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="{{ form.rut.id_for_label }}" class="form-label">RUT *</label>
-                                {{ form.rut }}
-                                {% if form.rut.errors %}
-                                    {% for error in form.rut.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                {% endif %}
+{% block title %}Agregar Usuario | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-3xl mx-auto mt-10">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <!-- Card Header -->
+            <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Agregar Nuevo Usuario
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Complete los datos para registrar un nuevo votante.
+                </p>
             </div>
-            
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i>
-                <strong>Nota:</strong> Se generará automáticamente una clave de 6 caracteres (3 letras y 3 números) para el usuario.
-                El usuario se creará como votante por defecto y podrá usar esta clave para iniciar sesión y votar.
-            </div>                            {% if messages %}
-                                {% for message in messages %}
-                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                            
-                            {% if form.non_field_errors %}
-                                {% for error in form.non_field_errors %}
-                                    <div class="alert alert-danger">{{ error }}</div>
-                                {% endfor %}
-                            {% endif %}
-                            
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-success">Crear Usuario</button>
-                                <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Cancelar</a>
+
+            <!-- Card Body -->
+            <div class="px-4 py-5 sm:p-6">
+                <form method="post" enctype="multipart/form-data" id="userForm">
+                    {% csrf_token %}
+
+                    <!-- Mensajes de Error Generales (non_field_errors) -->
+                    {% if form.non_field_errors %}
+                        <div class="rounded-md bg-red-50 p-4 mb-6">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-x-circle text-red-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    {% for error in form.non_field_errors %}
+                                        <p class="text-sm text-red-700">{{ error }}</p>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </form>
+                        </div>
+                    {% endif %}
+
+                    <!-- Sección de Foto -->
+                    <div class="mb-6">
+                        <label for="{{ form.foto.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            Foto de Perfil
+                        </label>
+                        <div class="mt-1 flex items-center">
+                            <!-- Renderizado del campo foto -->
+                            {{ form.foto }}
+                        </div>
+                        
+                        {% if form.foto.errors %}
+                            {% for error in form.foto.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500">
+                            JPG, PNG o GIF (máx. 5MB)
+                        </p>
                     </div>
-                </div>
+
+                    <!-- Nombre Completo -->
+                    <div class="mb-6">
+                        <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Nombre Completo <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1">
+                            {{ form.nombre }}
+                        </div>
+                        {% if form.nombre.errors %}
+                            {% for error in form.nombre.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-6">
+                        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Email <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1">
+                            {{ form.email }}
+                        </div>
+                        {% if form.email.errors %}
+                            {% for error in form.email.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- RUT -->
+                    <div class="mb-6">
+                        <label for="{{ form.rut.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            RUT <span class="text-red-500">*</span>
+                        </label>
+                        <div class="mt-1">
+                            {{ form.rut }}
+                        </div>
+                        {% if form.rut.errors %}
+                            {% for error in form.rut.errors %}
+                                <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Alerta Informativa -->
+                    <div class="rounded-md bg-blue-50 p-4 mb-6 border border-blue-100">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-info-circle text-blue-400 text-xl"></i>
+                            </div>
+                            <div class="ml-3 flex-1 md:flex md:justify-between">
+                                <p class="text-sm text-blue-700">
+                                    <strong>Nota:</strong> Se generará automáticamente una clave de 6 caracteres (3 letras y 3 números) para el usuario.
+                                    El usuario se creará como votante por defecto.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <a href="{% url 'panel_admin' %}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                            Crear Usuario
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+
+    <!-- Script para estilizar los inputs de Django automáticamente -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Seleccionar todos los inputs de texto, email y archivos dentro del formulario
+            const inputs = document.querySelectorAll('#userForm input[type="text"], #userForm input[type="email"], #userForm input[type="file"]');
+            
+            inputs.forEach(input => {
+                if (input.type === 'file') {
+                    // Estilo especial para input de archivo
+                    input.classList.add('block', 'w-full', 'text-sm', 'text-gray-500', 'file:mr-4', 'file:py-2', 'file:px-4', 'file:rounded-md', 'file:border-0', 'file:text-sm', 'file:font-semibold', 'file:bg-purple-50', 'file:text-purple-700', 'hover:file:bg-purple-100');
+                } else {
+                    // Estilo estándar de Tailwind para inputs de texto
+                    input.classList.add('shadow-sm', 'focus:ring-purple-custom', 'focus:border-purple-custom', 'block', 'w-full', 'sm:text-sm', 'border-gray-300', 'rounded-md', 'p-2', 'border');
+                }
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,44 +1,129 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-gray-50">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Votación - Acceso Usuario</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Votante | Sistema de Votación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f4f6fc; }
-        .login-box {
-            max-width: 400px;
-            margin: 80px auto;
-            padding: 30px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .login-title {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        /* Usamos un azul confiable para los votantes */
+        .bg-blue-custom { background-color: #2563eb; }
+        .text-blue-custom { color: #2563eb; }
+        .hover\:bg-blue-dark:hover { background-color: #1d4ed8; }
+        .focus\:ring-blue-custom:focus { --tw-ring-color: #2563eb; }
     </style>
 </head>
-<body>
-    <div class="login-box">
-        <h3 class="login-title">Sistema de Votación<br><small class="text-muted">Acceso Usuario</small></h3>
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                {{ form.rut.label_tag }}
-                {{ form.rut }}
-            </div>
-            <div class="mb-3">
-                {{ form.clave.label_tag }}
-                {{ form.clave }}
-            </div>
-            {% if error %}
-                <div class="alert alert-danger">{{ error }}</div>
-            {% endif %}
-            <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-            <a href="{% url 'login_admin' %}" class="btn btn-outline-danger mt-2">Ir al login de administrador</a>
-        </form>
+<body class="h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <!-- Icono Amigable -->
+        <div class="mx-auto h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 text-3xl shadow-sm">
+            <i class="bi bi-person-check-fill"></i>
+        </div>
+        
+        <h2 class="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+            Bienvenido 
+        </h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+            Sistema de Votación Seguro
+        </p>
     </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow-xl ring-1 ring-gray-900/5 sm:rounded-xl sm:px-10 border-t-4 border-blue-500">
+            
+            <div class="mb-6 text-center">
+                <h3 class="text-lg font-medium text-gray-900">Ingresa tus datos</h3>
+                <p class="text-sm text-gray-500">Usa tu RUT y la clave asignada para votar</p>
+            </div>
+
+            <form class="space-y-6" method="post" id="loginForm">
+                {% csrf_token %}
+
+                <!-- Mensaje de Error -->
+                {% if error %}
+                    <div class="rounded-md bg-red-50 p-4 border-l-4 border-red-400 animate-pulse">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-exclamation-circle-fill text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700 font-medium">{{ error }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Campo RUT -->
+                <div>
+                    <label for="{{ form.rut.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        RUT
+                    </label>
+                    <div class="mt-1 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-card-heading text-gray-400"></i>
+                        </div>
+                        {{ form.rut }}
+                    </div>
+                </div>
+
+                <!-- Campo Clave -->
+                <div>
+                    <label for="{{ form.clave.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Clave de Acceso
+                    </label>
+                    <div class="mt-1 relative rounded-md shadow-sm">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="bi bi-shield-lock text-gray-400"></i>
+                        </div>
+                        {{ form.clave }}
+                    </div>
+                </div>
+
+                <!-- Botón Ingresar -->
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-blue-custom hover:bg-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-custom transition duration-150 ease-in-out transform hover:-translate-y-0.5">
+                        Ingresar a Votar
+                    </button>
+                </div>
+            </form>
+
+            <!-- Divisor / Footer del Card -->
+            <div class="mt-8 pt-6 border-t border-gray-100">
+                <div class="flex items-center justify-center">
+                    <span class="text-sm text-gray-500 mr-2">¿Eres administrador?</span>
+                    <a href="{% url 'login_admin' %}" class="font-medium text-sm text-gray-400 hover:text-gray-600 transition duration-150 ease-in-out flex items-center group">
+                        <i class="bi bi-gear-fill mr-1 group-hover:rotate-90 transition-transform duration-300"></i>
+                        Ingreso Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <p class="text-center text-xs text-gray-400 mt-8">
+            &copy; 2025 VotaciónApp. Su voto es secreto y seguro.
+        </p>
+    </div>
+
+    <!-- Script para auto-estilizar los inputs de Django -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputs = document.querySelectorAll('#loginForm input');
+            inputs.forEach(input => {
+                input.classList.add(
+                    'block', 'w-full', 'pl-10', 'pr-3', 'py-2', 
+                    'border', 'border-gray-300', 'rounded-md', 
+                    'leading-5', 'bg-white', 'placeholder-gray-400', 
+                    'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-custom', 'focus:border-blue-custom', 
+                    'sm:text-sm', 'transition', 'duration-150', 'ease-in-out'
+                );
+                
+                // Añadir placeholder si no tienen
+                if (input.name === 'rut') input.placeholder = 'Ej: 12.345.678-9';
+                if (input.name === 'clave') input.placeholder = '••••••';
+            });
+        });
+    </script>
 </body>
 </html>

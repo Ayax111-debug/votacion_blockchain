@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import pymysql
+import django.db.backends.mysql.features
+pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,6 +27,10 @@ except ImportError:
     pass
 
 
+
+
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -33,7 +40,10 @@ SECRET_KEY = 'django-insecure-(4%&+bc_)kx^s7$(s8%vyim0k4o-kr$f0xcc-k3!)anlz4v6+=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['testserver','127.0.0.1']
+
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Application definition

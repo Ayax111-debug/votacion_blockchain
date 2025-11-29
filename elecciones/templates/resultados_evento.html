@@ -1,35 +1,92 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Resultados</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <div class="container mt-4">
-        <h3>Resultados</h3>
-        {% if resultados and resultados|length > 0 %}
-            <table class="table table-striped mt-3">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Votos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in resultados %}
-                        <tr>
-                            <td>{{ r.nombre }}</td>
-                            <td>{{ r.votos }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="alert alert-info">No hay votos registrados para este evento.</div>
-        {% endif %}
+{% extends 'base.html' %}
 
-        <a href="{% url 'panel_usuario' %}" class="btn btn-secondary mt-3">Volver</a>
+{% block title %}Resultados | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-3xl mx-auto mt-10 mb-12">
+        
+        <!-- Encabezado -->
+        <div class="mb-8 text-center">
+            <div class="mx-auto h-14 w-14 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-3xl mb-4 shadow-sm">
+                <i class="bi bi-trophy-fill"></i>
+            </div>
+            <h2 class="text-3xl font-bold tracking-tight text-gray-900">
+                Resultados de la Votación
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Conteo de votos registrados hasta el momento.
+            </p>
+        </div>
+
+        <div class="bg-white shadow-xl sm:rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Clasificación General
+                </h3>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    {{ resultados|length }} Candidatos
+                </span>
+            </div>
+
+            {% if resultados and resultados|length > 0 %}
+                <ul class="divide-y divide-gray-200">
+                    {% for r in resultados %}
+                        <li class="px-4 py-5 sm:px-6 hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between">
+                            <div class="flex items-center min-w-0 gap-4">
+                                <!-- Posición (Índice + 1) -->
+                                <div class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full 
+                                    {% if forloop.counter == 1 %}bg-yellow-100 text-yellow-700 font-bold ring-1 ring-yellow-300
+                                    {% elif forloop.counter == 2 %}bg-gray-100 text-gray-600 font-bold ring-1 ring-gray-300
+                                    {% elif forloop.counter == 3 %}bg-orange-100 text-orange-700 font-bold ring-1 ring-orange-300
+                                    {% else %}bg-white text-gray-400 border border-gray-200 font-medium text-sm{% endif %}">
+                                    {{ forloop.counter }}
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">
+                                        {{ r.nombre }}
+                                    </p>
+                                    {% if forloop.counter == 1 %}
+                                        <p class="text-xs text-green-600 font-medium flex items-center mt-0.5">
+                                            <i class="bi bi-star-fill mr-1 text-[10px]"></i> Líder actual
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <div class="text-right">
+                                    <span class="block text-lg font-bold text-gray-900">{{ r.votos }}</span>
+                                    <span class="block text-xs text-gray-500 uppercase tracking-wider font-medium">Votos</span>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="text-center py-12 px-6">
+                    <div class="mx-auto h-12 w-12 text-gray-300 mb-3">
+                        <i class="bi bi-inbox-fill text-4xl"></i>
+                    </div>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Sin votos registrados</h3>
+                    <p class="mt-1 text-sm text-gray-500">Aún no hay votos contabilizados para este evento.</p>
+                </div>
+            {% endif %}
+            
+            <!-- Footer de la tarjeta -->
+            <div class="bg-gray-50 px-4 py-4 sm:px-6 border-t border-gray-200">
+                <div class="text-xs text-gray-500 text-center flex justify-center items-center">
+                    <i class="bi bi-shield-lock mr-1.5"></i> Resultados verificados y seguros
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón Volver -->
+        <div class="mt-8 flex justify-center">
+            <a href="{% url 'panel_usuario' %}" class="inline-flex items-center px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                <i class="bi bi-arrow-left mr-2"></i> Volver al Panel
+            </a>
+        </div>
+
     </div>
-</body>
-</html>
+{% endblock %}

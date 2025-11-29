@@ -1,195 +1,233 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Asignar Participantes - {{ evento.nombre }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .user-item {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: white;
-        }
-        .user-photo {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 50%;
-        }
-        .participante-actual {
-            background-color: #e8f5e8;
-            border-color: #28a745;
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <!-- Información del evento y navegación -->
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <h2><i class="bi bi-people"></i> Asignar Participantes</h2>
-                <p class="text-muted">Evento: <strong>{{ evento.nombre }}</strong></p>
-                <p class="text-muted">Fecha: {{ evento.fecha_inicio|date:"d/m/Y H:i" }} a {{ evento.fecha_termino|date:"d/m/Y H:i" }}</p>
-                
-                <div class="alert alert-info">
-                    <h6><i class="bi bi-lightbulb"></i> Proceso de configuración:</h6>
-                    <ol class="mb-0">
-                        <li><strong>Paso 1:</strong> Asignar participantes (quiénes pueden votar) ← <span class="badge bg-primary">Estás aquí</span></li>
-                        <li><strong>Paso 2:</strong> 
-                            {% if participantes_actuales|length > 0 %}
-                                <a href="{% url 'asignar_candidatos' evento.id %}" class="text-decoration-none">Elegir candidatos de entre los participantes</a>
-                            {% else %}
-                                Elegir candidatos de entre los participantes <small class="text-muted">(necesitas participantes primero)</small>
-                            {% endif %}
-                        </li>
-                    </ol>
-                </div>
-            </div>
-            <div class="col-md-4 text-end">
-                <a href="{% url 'panel_admin' %}" class="btn btn-secondary">← Volver al Panel</a>
-                {% if participantes_actuales|length > 0 %}
-                    <a href="{% url 'asignar_candidatos' evento.id %}" class="btn btn-success">Siguiente: Candidatos →</a>
-                {% endif %}
-            </div>
-        </div>
+{% extends 'base.html' %}
 
-        <!-- Estadísticas rápidas -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-info">{{ participantes_actuales|length }}</h5>
-                        <p class="card-text small">Participantes Asignados</p>
+{% block title %}Asignar Participantes | VotaciónApp{% endblock %}
+
+{% block content %}
+    <div class="max-w-7xl mx-auto mt-8 mb-12">
+        
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6 border border-gray-200">
+            <div class="px-4 py-5 sm:px-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="bi bi-people mr-3 text-purple-600"></i>
+                        Asignar Participantes
+                    </h2>
+                    <div class="mt-2 text-sm text-gray-500">
+                        Evento: <strong class="text-gray-900">{{ evento.nombre }}</strong>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">{{ candidatos_count }}</h5>
-                        <p class="card-text small">Candidatos Elegidos</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-warning">{{ usuarios_disponibles|length }}</h5>
-                        <p class="card-text small">Usuarios Disponibles</p>
-                    </div>
+                <div class="mt-4 sm:mt-0 flex space-x-3">
+                    <a href="{% url 'panel_admin' %}" class="btn-secondary px-4 py-2 border rounded shadow-sm text-sm">← Volver</a>
+                    {% if participantes_actuales|length > 0 %}
+                        <a href="{% url 'asignar_candidatos' evento.id %}" class="bg-green-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-green-700">Siguiente: Candidatos →</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h3 class="mb-0">Asignar Participantes a: {{ evento.nombre }}</h3>
-                <p class="text-muted mb-0">
-                    {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
-                </p>
+        {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                    <div class="p-4 mb-2 rounded-md {{ message.tags|yesno:'bg-green-50 text-green-700,bg-red-50 text-red-700' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
             </div>
-            <div class="card-body">
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div class="bg-white shadow rounded-lg border border-gray-200 flex flex-col h-[650px]"> <div class="px-4 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-900">Usuarios Disponibles</h3>
+                        <span class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded-full" id="count-disponibles">{{ usuarios_disponibles|length }}</span>
+                    </div>
+
+                    <div class="relative">
+                        <input type="text" id="search-disponibles" onkeyup="filtrarLista('disponibles')" 
+                               placeholder="Buscar por nombre, rut o correo..." 
+                               class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                        <i class="bi bi-search absolute left-3 top-2.5 text-gray-400"></i>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="check-all-disponibles" onchange="toggleAll('disponibles', this)" class="rounded text-purple-600 focus:ring-purple-500 w-4 h-4">
+                            <span class="font-medium">Seleccionar a todos</span>
+                        </label>
+                    </div>
+                </div>
                 
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-                
-                <div class="row">
-                    <!-- Columna izquierda: Usuarios disponibles -->
-                    <div class="col-md-6">
-                        <h5 class="mb-3">Usuarios Disponibles</h5>
+                <form method="post" action="{% url 'asignar_participantes' evento.id %}" id="form-add" class="flex-1 flex flex-col overflow-hidden">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_bulk"> <div class="flex-1 overflow-y-auto p-2" id="list-disponibles">
                         {% if usuarios_disponibles %}
-                            {% for persona in usuarios_disponibles %}
-                                <div class="user-item">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            {% if persona.foto_display_url %}
-                                                <img src="{{ persona.foto_display_url }}" alt="{{ persona.nombre }}" class="user-photo me-3">
-                                            {% else %}
-                                                <div class="user-photo me-3 bg-secondary d-flex align-items-center justify-content-center text-white">
-                                                    {{ persona.nombre|first|upper }}
-                                                </div>
-                                            {% endif %}
-                                            <div>
-                                                <strong>{{ persona.nombre }}</strong><br>
-                                                <small class="text-muted">{{ persona.email }}</small>
-                                            </div>
+                            <ul class="divide-y divide-gray-100">
+                                {% for persona in usuarios_disponibles %}
+                                    <li class="py-2 px-2 hover:bg-gray-50 rounded flex items-center group transition-colors user-item" 
+                                        data-search="{{ persona.nombre|lower }} {{ persona.email|lower }} {{ persona.rut|lower }}">
+                                        
+                                        <div class="flex items-center h-5 mr-3">
+                                            <input type="checkbox" name="persona_ids" value="{{ persona.id }}" 
+                                                   class="focus:ring-purple-500 h-5 w-5 text-purple-600 border-gray-300 rounded cursor-pointer checkbox-disponibles">
                                         </div>
-                                        <form method="post" action="{% url 'asignar_participantes' evento.id %}" style="display: inline;">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="persona_id" value="{{ persona.id }}">
-                                            <input type="hidden" name="action" value="add">
-                                            <button type="submit" class="btn btn-success btn-sm">
-                                                + Agregar
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-muted">No hay usuarios disponibles para agregar.</p>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Columna derecha: Participantes actuales -->
-                    <div class="col-md-6">
-                        <h5 class="mb-3">Participantes Asignados ({{ participantes_actuales|length }})</h5>
-                        {% if participantes_actuales %}
-                            {% for participacion in participantes_actuales %}
-                                <div class="user-item participante-actual">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            {% if participacion.persona__foto_url %}
-                                                <img src="{{ participacion.persona__foto_url }}" alt="{{ participacion.persona__nombre }}" class="user-photo me-3">
-                                            {% else %}
-                                                <div class="user-photo me-3 bg-success d-flex align-items-center justify-content-center text-white">
-                                                    {{ participacion.persona__nombre|first|upper }}
-                                                </div>
-                                            {% endif %}
-                                            <div>
-                                                <strong>{{ participacion.persona__nombre }}</strong><br>
-                                                <small class="text-muted">{{ participacion.persona__email }}</small>
-                                                {% if participacion.ha_votado %}
-                                                    <br><small class="badge bg-warning">Ya votó</small>
+
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <div class="flex-shrink-0">
+                                                 {% if persona.foto_display_url %}
+                                                    <img class="h-10 w-10 rounded-full object-cover border" src="{{ persona.foto_display_url }}">
+                                                {% else %}
+                                                    <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold border">
+                                                        {{ persona.nombre|first|upper }}
+                                                    </div>
                                                 {% endif %}
                                             </div>
+                                            <div class="ml-3 truncate">
+                                                <p class="text-sm font-medium text-gray-900 truncate">{{ persona.nombre }}</p>
+                                                <p class="text-xs text-gray-500 truncate">{{ persona.email }}</p>
+                                                <p class="text-[10px] text-gray-400 font-mono">RUT: {{ persona.rut }}</p>
+                                            </div>
                                         </div>
-                                        {% if not participacion.ha_votado %}
-                                            <form method="post" action="{% url 'asignar_participantes' evento.id %}" style="display: inline;">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="persona_id" value="{{ participacion.persona__id }}">
-                                                <input type="hidden" name="action" value="remove">
-                                                <button type="submit" class="btn btn-danger btn-sm">
-                                                    - Quitar
-                                                </button>
-                                            </form>
-                                        {% else %}
-                                            <small class="text-muted">No se puede quitar<br>(ya votó)</small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
                         {% else %}
-                            <p class="text-muted">No hay participantes asignados aún.</p>
+                            <div class="text-center py-10 text-gray-500">No hay usuarios disponibles.</div>
                         {% endif %}
                     </div>
-                </div>
+
+                    <div class="p-4 border-t border-gray-200 bg-gray-50">
+                        <button type="submit" class="w-full flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                            <i class="bi bi-plus-lg mr-2"></i> Agregar Seleccionados
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white shadow rounded-lg border border-green-200 flex flex-col h-[650px] ring-1 ring-green-100">
                 
-                <div class="mt-4 border-top pt-3">
-                    <a href="{% url 'panel_admin' %}" class="btn btn-secondary">Volver al Panel</a>
-                    <a href="{% url 'ver_evento' evento.id %}" class="btn btn-info">Ver Detalles del Evento</a>
+                <div class="px-4 py-4 border-b border-green-200 bg-green-50 rounded-t-lg space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-green-900">Participantes Asignados</h3>
+                        <span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full" id="count-asignados">{{ participantes_actuales|length }}</span>
+                    </div>
+
+                    <div class="relative">
+                        <input type="text" id="search-asignados" onkeyup="filtrarLista('asignados')" 
+                               placeholder="Buscar participante..." 
+                               class="w-full pl-9 pr-3 py-2 text-sm border border-green-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                        <i class="bi bi-search absolute left-3 top-2.5 text-green-600/50"></i>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center space-x-2 text-sm text-green-800 cursor-pointer">
+                            <input type="checkbox" id="check-all-asignados" onchange="toggleAll('asignados', this)" class="rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                            <span class="font-medium">Seleccionar a todos</span>
+                        </label>
+                    </div>
                 </div>
+
+                <form method="post" action="{% url 'asignar_participantes' evento.id %}" id="form-remove" class="flex-1 flex flex-col overflow-hidden">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_bulk"> <div class="flex-1 overflow-y-auto p-2" id="list-asignados">
+                        {% if participantes_actuales %}
+                            <ul class="divide-y divide-green-50">
+                                {% for participacion in participantes_actuales %}
+                                    <li class="py-2 px-2 hover:bg-green-50 rounded flex items-center group transition-colors user-item"
+                                        data-search="{{ participacion.persona__nombre|lower }} {{ participacion.persona__email|lower }} {{ participacion.persona__rut|lower }}">
+                                        
+                                        <div class="flex items-center h-5 mr-3">
+                                            {% if not participacion.ha_votado %}
+                                                <input type="checkbox" name="persona_ids" value="{{ participacion.persona__id }}" 
+                                                       class="focus:ring-red-500 h-5 w-5 text-red-600 border-gray-300 rounded cursor-pointer checkbox-asignados">
+                                            {% else %}
+                                                <input type="checkbox" disabled class="h-5 w-5 text-gray-300 border-gray-200 rounded cursor-not-allowed bg-gray-100">
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <div class="flex-shrink-0">
+                                                 {% if participacion.persona__foto_url %}
+                                                    <img class="h-10 w-10 rounded-full object-cover border border-green-200" src="{{ participacion.persona__foto_url }}">
+                                                {% else %}
+                                                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold border border-green-200">
+                                                        {{ participacion.persona__nombre|first|upper }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="ml-3 truncate">
+                                                <p class="text-sm font-medium text-gray-900 truncate">{{ participacion.persona__nombre }}</p>
+                                                <div class="flex items-center text-xs text-gray-500">
+                                                    <span class="truncate mr-2">{{ participacion.persona__email }}</span>
+                                                    {% if participacion.ha_votado %}
+                                                        <span class="bg-yellow-100 text-yellow-800 px-1.5 rounded text-[10px]">Ya votó</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center py-10 text-gray-500">No hay participantes asignados.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="p-4 border-t border-green-200 bg-green-50">
+                        <button type="submit" class="w-full flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            <i class="bi bi-dash-lg mr-2"></i> Quitar Seleccionados
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+
+    <script>
+        /**
+         * Filtra los elementos de la lista en base al input de búsqueda.
+         * @param {string} tipo - 'disponibles' o 'asignados'
+         */
+        function filtrarLista(tipo) {
+            const input = document.getElementById('search-' + tipo);
+            const filtro = input.value.toLowerCase();
+            const contenedor = document.getElementById('list-' + tipo);
+            const items = contenedor.getElementsByTagName('li');
+
+            for (let i = 0; i < items.length; i++) {
+                // Obtenemos el texto oculto en data-search (nombre email rut)
+                const textoBusqueda = items[i].getAttribute('data-search');
+                
+                if (textoBusqueda && textoBusqueda.indexOf(filtro) > -1) {
+                    items[i].style.display = ""; // Mostrar
+                } else {
+                    items[i].style.display = "none"; // Ocultar
+                }
+            }
+            
+            // Opcional: Desmarcar el "Seleccionar todos" si se filtra
+            document.getElementById('check-all-' + tipo).checked = false;
+        }
+
+        /**
+         * Selecciona o deselecciona todos los checkboxes VISIBLES en la lista.
+         * @param {string} tipo - 'disponibles' o 'asignados'
+         * @param {HTMLElement} checkboxMaestro - El checkbox "Seleccionar Todos"
+         */
+        function toggleAll(tipo, checkboxMaestro) {
+            const contenedor = document.getElementById('list-' + tipo);
+            // Buscamos solo los checkboxes dentro de items visibles (style.display != 'none')
+            const items = contenedor.getElementsByTagName('li');
+            
+            for (let i = 0; i < items.length; i++) {
+                // Solo si el item está visible (respetando el filtro de búsqueda)
+                if (items[i].style.display !== 'none') {
+                    const checkbox = items[i].querySelector('.checkbox-' + tipo);
+                    if (checkbox && !checkbox.disabled) {
+                        checkbox.checked = checkboxMaestro.checked;
+                    }
+                }
+            }
+        }
+    </script>
+{% endblock %}
