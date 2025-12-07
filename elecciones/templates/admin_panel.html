@@ -14,9 +14,9 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Eventos Total</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Eventos (Filtrados)</dt>
                             <dd>
-                                <div class="text-2xl font-semibold text-gray-900">{{ eventos|length }}</div>
+                                <div class="text-2xl font-semibold text-gray-900">{{ eventos_con_stats.paginator.count }}</div>
                             </dd>
                         </dl>
                     </div>
@@ -31,7 +31,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Votantes</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Votantes Globales</dt>
                             <dd>
                                 <div class="text-2xl font-semibold text-gray-900">{{ total_votantes }}</div>
                             </dd>
@@ -48,7 +48,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Candidatos</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Candidatos Globales</dt>
                             <dd>
                                 <div class="text-2xl font-semibold text-gray-900">{{ total_candidatos }}</div>
                             </dd>
@@ -78,29 +78,29 @@
 
     <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Eventos de Elección</h3>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Gestión de Eventos</h3>
             <div class="flex space-x-3">
-                <a href="{% url 'agregar_usuario' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
-                    + Agregar Usuario
+                <a href="{% url 'agregar_usuario' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition">
+                    + Usuario
                 </a>
-                <a href="{% url 'crear_evento' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-custom hover:bg-purple-custom focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
-                    + Crear Nuevo Evento
+                <a href="{% url 'crear_evento' %}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-custom hover:bg-purple-custom transition">
+                    + Nuevo Evento
                 </a>
             </div>
         </div>
 
         <div class="px-4 py-5 sm:p-6">
-            <div class="flex space-x-2 mb-4">
-                <a href="{% url 'panel_admin' %}?filtro=todos" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'todos' %}bg-purple-custom text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+            <div class="flex space-x-2 mb-4 overflow-x-auto pb-2">
+                <a href="?filtro=todos" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'todos' %}bg-purple-custom text-white{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition whitespace-nowrap">
                     Todos
                 </a>
-                <a href="{% url 'panel_admin' %}?filtro=curso" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'curso' %}bg-green-100 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                <a href="?filtro=curso" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'curso' %}bg-green-100 text-green-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition whitespace-nowrap">
                     En curso
                 </a>
-                <a href="{% url 'panel_admin' %}?filtro=futuro" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'futuro' %}bg-blue-100 text-blue-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                <a href="?filtro=futuro" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'futuro' %}bg-blue-100 text-blue-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition whitespace-nowrap">
                     Futuros
                 </a>
-                <a href="{% url 'panel_admin' %}?filtro=terminado" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'terminado' %}bg-gray-100 text-gray-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition">
+                <a href="?filtro=terminado" class="px-3 py-2 text-sm font-medium rounded-md {% if filtro == 'terminado' %}bg-gray-100 text-gray-800{% else %}text-gray-700 hover:bg-gray-100{% endif %} transition whitespace-nowrap">
                     Terminados
                 </a>
             </div>
@@ -112,97 +112,82 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fechas</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Periodo</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configuración</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datos</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     {% for item in eventos_con_stats %}
                                     {% with evento=item.evento %}
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ evento.nombre }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {{ evento.nombre }}
+                                        </td>
+                                        
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {% if evento.fecha_inicio and evento.fecha_termino %}
-                                                {{ evento.fecha_inicio|date:"d M Y H:i" }} – {{ evento.fecha_termino|date:"d M Y H:i" }}
+                                                <div class="flex flex-col">
+                                                    <span>In: {{ evento.fecha_inicio|date:"d M Y H:i" }}</span>
+                                                    <span>Fn: {{ evento.fecha_termino|date:"d M Y H:i" }}</span>
+                                                </div>
                                             {% else %}
-                                                <span class="text-gray-400">Fechas por configurar</span>
+                                                <span class="text-gray-400 italic">Sin fechas</span>
                                             {% endif %}
                                         </td>
+
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {% if evento.activo %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
                                                 {% if evento.activo %}Activo{% else %}Inactivo{% endif %}
                                             </span>
                                         </td>
+
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             <div class="flex flex-col space-y-1">
                                                 <div class="flex items-center">
-                                                    <i class="bi bi-people mr-1.5 {% if item.participantes_count > 0 %}text-green-500{% else %}text-gray-400{% endif %}"></i>
-                                                    <span>{{ item.participantes_count }} Participante{{ item.participantes_count|pluralize }}</span>
+                                                    <i class="bi bi-people mr-1.5 text-xs"></i>
+                                                    <span>{{ item.participantes_count }} part.</span>
                                                 </div>
                                                 <div class="flex items-center">
-                                                    <i class="bi bi-person-badge mr-1.5 {% if item.candidatos_count > 0 %}text-green-500{% else %}text-gray-400{% endif %}"></i>
-                                                    <span>{{ item.candidatos_count }} Candidato{{ item.candidatos_count|pluralize }}</span>
+                                                    <i class="bi bi-person-badge mr-1.5 text-xs"></i>
+                                                    <span>{{ item.candidatos_count }} cand.</span>
                                                 </div>
                                                 <div class="mt-1">
                                                     {% if item.configuracion_completa %}
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                            <i class="bi bi-check-circle mr-1"></i> Configurado
-                                                        </span>
+                                                        <span class="text-green-600 text-xs font-bold"><i class="bi bi-check"></i> Listo</span>
                                                     {% else %}
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                            <i class="bi bi-exclamation-triangle mr-1"></i> Incompleto
-                                                        </span>
+                                                        <span class="text-yellow-600 text-xs font-bold"><i class="bi bi-exclamation"></i> Incompleto</span>
                                                     {% endif %}
                                                 </div>
                                             </div>
                                         </td>
+
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div class="flex flex-col space-y-2">
-                                                <a href="{% url 'asignar_participantes' evento.id %}" 
-                                                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition">
-                                                    <i class="bi bi-people mr-1.5"></i> 
-                                                    {% if item.participantes_count > 0 %}Gestionar{% else %}1. Asignar{% endif %} Participantes
-                                                </a>
+                                            <div class="flex flex-col space-y-2 items-end">
+                                                <a href="{% url 'asignar_participantes' evento.id %}" class="text-indigo-600 hover:text-indigo-900 text-xs">Participantes</a>
+                                                <a href="{% url 'asignar_candidatos' evento.id %}" class="text-indigo-600 hover:text-indigo-900 text-xs">Candidatos</a>
+                                                <a href="{% url 'ver_evento' evento.id %}" class="text-purple-600 hover:text-purple-900 text-xs font-bold">Ver Detalles</a>
                                                 
-                                                <a href="{% url 'asignar_candidatos' evento.id %}" 
-                                                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-custom transition {% if item.participantes_count == 0 %}opacity-50 cursor-not-allowed{% endif %}">
-                                                    <i class="bi bi-person-badge mr-1.5"></i> 
-                                                    {% if item.candidatos_count > 0 %}Gestionar{% else %}2. Elegir{% endif %} Candidatos
-                                                </a>
-                                                
-                                                <a href="{% url 'ver_evento' evento.id %}" class="text-purple-custom hover:text-purple-900 flex items-center justify-end transition">
-                                                    <i class="bi bi-eye mr-1"></i> Ver Detalles
-                                                </a>
-                                                
-                                                <div class="flex justify-end">
-                                                    {% if evento.activo %}
-                                                        <form method="post" action="{% url 'desactivar_evento' evento.id %}" style="display:inline;">
-                                                            {% csrf_token %}
-                                                            <button type="submit" class="text-red-600 hover:text-red-900 text-xs transition font-medium">
-                                                                <i class="bi bi-toggle-on mr-1"></i> Desactivar
-                                                            </button>
-                                                        </form>
-                                                    {% else %}
-                                                        {% if evento.fecha_termino and evento.fecha_termino < ahora %}
-                                                            <span class="inline-flex items-center px-2 py-1 border border-gray-200 rounded text-xs font-medium text-gray-400 bg-gray-50 cursor-not-allowed select-none" title="El periodo de votación ha terminado">
-                                                                <i class="bi bi-slash-circle mr-1"></i> Finalizado
-                                                            </span>
-                                                        {% else %}
-                                                            <a href="{% url 'activar_evento' evento.id %}" class="text-green-600 hover:text-green-900 text-xs transition flex items-center font-medium">
-                                                                <i class="bi bi-toggle-off mr-1"></i> Activar
-                                                            </a>
-                                                        {% endif %}
-                                                    {% endif %}
-                                                </div>
+                                                {% if evento.activo %}
+                                                    <form method="post" action="{% url 'desactivar_evento' evento.id %}" class="inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-xs">Desactivar</button>
+                                                    </form>
+                                                {% else %}
+                                                    <a href="{% url 'activar_evento' evento.id %}" class="text-green-600 hover:text-green-900 text-xs">Activar</a>
+                                                {% endif %}
                                             </div>
                                         </td>
                                     </tr>
                                     {% endwith %}
                                     {% empty %}
-                                    <tr><td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No hay eventos aún</td></tr>
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                            No se encontraron eventos con el filtro: <strong>{{ filtro }}</strong>
+                                        </td>
+                                    </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -210,6 +195,71 @@
                     </div>
                 </div>
             </div>
+
+            {% if eventos_con_stats.has_other_pages %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4">
+                
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if eventos_con_stats.has_previous %}
+                        <a href="?page={{ eventos_con_stats.previous_page_number }}&filtro={{ filtro }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Anterior</a>
+                    {% else %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-gray-50 cursor-not-allowed">Anterior</span>
+                    {% endif %}
+
+                    {% if eventos_con_stats.has_next %}
+                        <a href="?page={{ eventos_con_stats.next_page_number }}&filtro={{ filtro }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Siguiente</a>
+                    {% else %}
+                        <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-gray-50 cursor-not-allowed">Siguiente</span>
+                    {% endif %}
+                </div>
+
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Mostrando <span class="font-medium">{{ eventos_con_stats.start_index }}</span> a <span class="font-medium">{{ eventos_con_stats.end_index }}</span> de <span class="font-medium">{{ eventos_con_stats.paginator.count }}</span> resultados
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if eventos_con_stats.has_previous %}
+                                <a href="?page={{ eventos_con_stats.previous_page_number }}&filtro={{ filtro }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Anterior</span>
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-300 cursor-not-allowed">
+                                    <i class="bi bi-chevron-left"></i>
+                                </span>
+                            {% endif %}
+
+                            {% for i in eventos_con_stats.paginator.page_range %}
+                                {% if eventos_con_stats.number == i %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-purple-500 bg-purple-50 text-sm font-medium text-purple-600 z-10">
+                                        {{ i }}
+                                    </span>
+                                {% elif i > eventos_con_stats.number|add:'-3' and i < eventos_con_stats.number|add:'3' %}
+                                    <a href="?page={{ i }}&filtro={{ filtro }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        {{ i }}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if eventos_con_stats.has_next %}
+                                <a href="?page={{ eventos_con_stats.next_page_number }}&filtro={{ filtro }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Siguiente</span>
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-50 text-sm font-medium text-gray-300 cursor-not-allowed">
+                                    <i class="bi bi-chevron-right"></i>
+                                </span>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
         </div>
     </div>
 {% endblock %}

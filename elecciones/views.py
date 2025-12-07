@@ -29,7 +29,7 @@ import os
 import logging
 from django.views.decorators.csrf import csrf_exempt
 from .models import Voto
-
+from django.db import connection
 
 logger = logging.getLogger(__name__)
 
@@ -286,6 +286,14 @@ def logout_view(request):
     return redirect('login_votante')
 
 
+class EventoSimple:
+    def __init__(self, e_id, nombre, activo, fi, ft):
+        self.id = e_id
+        self.nombre = nombre
+        self.activo = activo
+        self.fecha_inicio = fi
+        self.fecha_termino = ft
+
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def panel_admin(request):
@@ -293,9 +301,7 @@ def panel_admin(request):
     
     # 1. Obtener eventos RAW
     try:
-        from django.db import connection
         with connection.cursor() as cursor:
-            # Traemos todo como string para ver qué formato tienen realmente
             cursor.execute("""
                 SELECT id, nombre, activo, fecha_inicio, fecha_termino 
                 FROM elecciones_eventoeleccion 
@@ -305,103 +311,53 @@ def panel_admin(request):
         logger.exception("Error SQL")
         eventos_raw = []
 
-    # 2. Preparar fechas (Depuración)
-    from datetime import datetime
-    import sys
-
-    ahora = datetime.now() # Fecha naive (sin zona horaria) del sistema
-    
-    print(f"\n--- INICIO DEBUG FILTRO: {filtro} ---")
-    print(f"Hora del Servidor (Ahora): {ahora}")
-
+    # 2. Preparar fechas y Filtrar
+    ahora = datetime.now() # Fecha sistema
     eventos_filtrados = []
+
+    # Función interna para limpiar fechas
+    def limpiar_fecha(fecha_sucia):
+        if not fecha_sucia: return None
+        if isinstance(fecha_sucia, datetime): 
+            return fecha_sucia.replace(tzinfo=None)
+        
+        fecha_str = str(fecha_sucia).strip()
+        formatos = [
+            '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', 
+            '%Y-%m-%d', '%d/%m/%Y %H:%M'
+        ]
+        for fmt in formatos:
+            try: return datetime.strptime(fecha_str, fmt)
+            except ValueError: continue
+        try: return datetime.fromisoformat(fecha_str)
+        except: return None
 
     for row in eventos_raw:
         e_id, nombre, activo, fi_raw, ft_raw = row
-        
-        # Función interna para limpiar fechas a la fuerza
-        def limpiar_fecha(fecha_sucia):
-            if not fecha_sucia: return None
-            if isinstance(fecha_sucia, datetime): 
-                return fecha_sucia.replace(tzinfo=None) # Si ya es fecha, quitar zona horaria
-            
-            # Si es string, probar formatos comunes
-            fecha_str = str(fecha_sucia).strip()
-            formatos = [
-                '%Y-%m-%d %H:%M:%S',       # 2025-11-29 14:30:00
-                '%Y-%m-%d %H:%M:%S.%f',    # 2025-11-29 14:30:00.000000
-                '%Y-%m-%d',                # 2025-11-29
-                '%d/%m/%Y %H:%M',          # 29/11/2025 14:30
-            ]
-            for fmt in formatos:
-                try:
-                    return datetime.strptime(fecha_str, fmt)
-                except ValueError:
-                    continue
-            # Intento final ISO
-            try: return datetime.fromisoformat(fecha_str)
-            except: return None
-
         fi = limpiar_fecha(fi_raw)
         ft = limpiar_fecha(ft_raw)
-
-        # Crear objeto simple
-        class EventoSimple:
-            def __init__(self, e_id, nombre, activo, fi, ft):
-                self.id = e_id
-                self.nombre = nombre
-                self.activo = activo
-                self.fecha_inicio = fi
-                self.fecha_termino = ft
         
+        # Instancia del evento simple
         ev = EventoSimple(e_id, nombre, activo, fi, ft)
 
-        # --- LÓGICA DE FILTRADO CON PRINTS ---
+        # Lógica de Filtrado
         agregar = False
-        razon = "Rechazado por defecto"
-
         if not fi or not ft:
-            razon = f"Fechas inválidas (Raw Inicio: {fi_raw})"
             if filtro == 'todos': agregar = True
-        
         else:
             if filtro == 'todos':
                 agregar = True
-                razon = "Todos pasan"
-            
             elif filtro == 'curso':
-                # Inicio <= Ahora <= Fin
-                if fi <= ahora <= ft:
-                    agregar = True
-                    razon = "Está En Curso"
-                else:
-                    razon = f"No en curso ({fi} vs {ahora} vs {ft})"
-
+                if fi <= ahora <= ft: agregar = True
             elif filtro == 'futuro':
-                # Ahora < Inicio
-                if ahora < fi:
-                    agregar = True
-                    razon = "Es Futuro"
-                else:
-                    razon = f"Ya empezó o pasó ({ahora} no es menor a {fi})"
-
+                if ahora < fi: agregar = True
             elif filtro == 'terminado':
-                # Ahora > Fin
-                if ahora > ft:
-                    agregar = True
-                    razon = "Ya Terminó"
-                else:
-                    razon = f"Aún no termina ({ahora} no es mayor a {ft})"
-
-        print(f"[{nombre}] -> {razon}") # ESTO SALDRÁ EN TU CONSOLA
+                if ahora > ft: agregar = True
 
         if agregar:
             eventos_filtrados.append(ev)
 
-    print(f"Total encontrados: {len(eventos_raw)} | Total tras filtro: {len(eventos_filtrados)}")
-    print("-----------------------------------\n")
-
-    # 4. Estadísticas (Igual que antes)
+    # 3. Calcular Estadísticas para la lista filtrada
     eventos_con_stats = []
     for evento in eventos_filtrados:
         try:
@@ -414,9 +370,22 @@ def panel_admin(request):
                 'configuracion_completa': participantes_count > 0 and candidatos_count > 0
             })
         except:
-            eventos_con_stats.append({'evento': evento, 'participantes_count':0, 'candidatos_count':0, 'configuracion_completa':False})
+            eventos_con_stats.append({
+                'evento': evento, 
+                'participantes_count': 0, 
+                'candidatos_count': 0, 
+                'configuracion_completa': False
+            })
 
-    # Stats globales
+    # ==========================================
+    # 4. PAGINACIÓN (NUEVO)
+    # ==========================================
+    # Paginamos la lista final procesada (ej: 10 eventos por página)
+    paginator = Paginator(eventos_con_stats, 5) 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # 5. Stats globales (Contadores de arriba)
     try:
         total_votantes = Persona.objects.filter(es_votante=True).count()
         total_candidatos = Persona.objects.filter(es_candidato=True).count()
@@ -425,8 +394,9 @@ def panel_admin(request):
         total_votantes = 0; total_candidatos = 0; total_candidaturas = 0
 
     return render(request, 'admin_panel.html', {
-        'eventos': eventos_filtrados,
-        'eventos_con_stats': eventos_con_stats,
+        # Pasamos el OBJETO PAGINADO en lugar de la lista completa
+        'eventos_con_stats': page_obj, 
+        'eventos': eventos_filtrados, # Mantenemos esto por si usas el conteo raw en otro lado
         'filtro': filtro,
         'total_votantes': total_votantes,
         'total_candidatos': total_candidatos,
@@ -645,7 +615,7 @@ def asignar_candidatos(request, evento_id):
 def ver_evento(request, evento_id):
     """Vista completa para ver detalles del evento con participantes, candidatos y estadísticas"""
     try:
-        # Obtener evento usando valores específicos para evitar problemas datetime
+        # 1. Obtener datos básicos del evento
         evento_data = EventoEleccion.objects.filter(id=evento_id).values(
             'id', 'nombre', 'fecha_inicio', 'fecha_termino', 'activo'
         ).first()
@@ -654,7 +624,7 @@ def ver_evento(request, evento_id):
             messages.error(request, "Evento no encontrado")
             return redirect('panel_admin')
 
-        # Calcular estado del evento
+        # Calcular estado
         ahora = timezone.now()
         fi = evento_data['fecha_inicio']
         ft = evento_data['fecha_termino']
@@ -666,7 +636,6 @@ def ver_evento(request, evento_id):
         else:
             estado = 'Terminado'
 
-        # Crear objeto evento para el template
         evento = {
             'id': evento_data['id'],
             'nombre': evento_data['nombre'],
@@ -676,9 +645,8 @@ def ver_evento(request, evento_id):
             'activo': evento_data['activo']
         }
 
-        # Obtener participantes del evento usando consulta SQL directa
+        # 2. Obtener PARTICIPANTES (SQL Directo)
         try:
-            from django.db import connection
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT p.id, p.nombre, p.email, p.foto, pe.ha_votado
@@ -689,24 +657,24 @@ def ver_evento(request, evento_id):
                 """, [evento_id])
                 participantes_raw = cursor.fetchall()
                 
-            participantes = []
+            participantes_lista_completa = []
             for part_row in participantes_raw:
-                participantes.append({
+                participantes_lista_completa.append({
                     'persona__id': part_row[0],
                     'persona__nombre': part_row[1],
                     'persona__email': part_row[2],
-                    'persona__foto_url': part_row[3],  # Ahora directamente el campo foto
+                    'persona__foto_url': part_row[3],
                     'ha_votado': part_row[4]
                 })
         except Exception as e:
-            participantes = []
+            participantes_lista_completa = []
             logger.exception(f"Error obteniendo participantes para evento {evento_id}")
 
-        # Obtener candidatos del evento con información extendida usando consulta SQL directa
+        # 3. Obtener CANDIDATOS (SQL Directo)
         try:
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    SELECT p.id, p.nombre, p.email, p.foto
+                    SELECT p.id, p.nombre, p.email, p.foto, c.id
                     FROM elecciones_persona p
                     INNER JOIN elecciones_candidatura c ON p.id = c.persona_id
                     WHERE c.evento_id = %s
@@ -714,9 +682,9 @@ def ver_evento(request, evento_id):
                 """, [evento_id])
                 candidatos_raw = cursor.fetchall()
                 
-            candidatos = []
+            candidatos_lista_completa = []
             for candidato_row in candidatos_raw:
-                # Contar votos recibidos por este candidato en este evento usando SQL directo
+                # Contar votos
                 try:
                     with connection.cursor() as cursor:
                         cursor.execute("""
@@ -727,54 +695,65 @@ def ver_evento(request, evento_id):
                 except Exception:
                     votos_recibidos = 0
 
-                candidatos.append({
+                candidatos_lista_completa.append({
                     'persona': {
                         'id': candidato_row[0],
                         'nombre': candidato_row[1],
                         'email': candidato_row[2],
-                        'foto_display_url': candidato_row[3]  # Directamente el campo foto
+                        'foto_display_url': candidato_row[3]
                     },
-                    'fecha_registro': None,  # No mostrar fecha por problemas datetime
+                    'fecha_registro': None,
                     'votos_recibidos': votos_recibidos
                 })
         except Exception as e:
-            candidatos = []
+            candidatos_lista_completa = []
             logger.exception(f"Error obteniendo candidatos para evento {evento_id}")
 
-        # Calcular estadísticas usando SQL directo
-        participantes_count = len(list(participantes))
-        candidatos_count = len(candidatos)
+        # 4. Calcular estadísticas
+        participantes_count = len(participantes_lista_completa)
+        candidatos_count = len(candidatos_lista_completa)
         
-        # Contar votos y participantes que votaron usando SQL directo
         try:
             with connection.cursor() as cursor:
-                # Contar votos totales
-                cursor.execute("""
-                    SELECT COUNT(*) FROM elecciones_voto WHERE evento_id = %s
-                """, [evento_id])
+                cursor.execute("SELECT COUNT(*) FROM elecciones_voto WHERE evento_id = %s", [evento_id])
                 votos_count = cursor.fetchone()[0]
                 
-                # Contar participantes que ya votaron
                 cursor.execute("""
                     SELECT COUNT(*) FROM elecciones_participacioneleccion 
                     WHERE evento_id = %s AND ha_votado = 1
                 """, [evento_id])
                 participantes_que_votaron = cursor.fetchone()[0]
-        except Exception as e:
+        except Exception:
             votos_count = 0
             participantes_que_votaron = 0
-            logger.exception(f"Error obteniendo estadísticas para evento {evento_id}")
         
-        # Calcular porcentaje de participación
         if participantes_count > 0:
             participacion_porcentaje = (participantes_que_votaron / participantes_count) * 100
         else:
             participacion_porcentaje = 0
 
+        # =========================================================================
+        # 5. LÓGICA DE PAGINACIÓN (AQUÍ ESTABA EL ERROR ANTES)
+        # =========================================================================
+        
+        # A. Paginador de Participantes (Usando la lista obtenida por SQL)
+        participantes_paginator = Paginator(participantes_lista_completa, 10) # 10 por página
+        page_number = request.GET.get('page')
+        participantes_page = participantes_paginator.get_page(page_number)
+        
+        # B. Paginador de Candidatos (Usando la lista obtenida por SQL)
+        candidatos_paginator = Paginator(candidatos_lista_completa, 5) # 5 por página
+        candidatos_page_number = request.GET.get('candidatos_page')
+        candidatos_page = candidatos_paginator.get_page(candidatos_page_number)
+
+        # 6. Renderizar pasando los objetos PAGINADOS ('_page')
         return render(request, 'ver_evento.html', {
             'evento': evento,
-            'participantes': participantes,
-            'candidatos': candidatos,
+            # IMPORTANTE: Pasamos los objetos Page, no las listas completas
+            'participantes': participantes_page, 
+            'candidatos': candidatos_page,
+            
+            # Conteos totales
             'participantes_count': participantes_count,
             'candidatos_count': candidatos_count,
             'votos_count': votos_count,

@@ -5,7 +5,6 @@
 {% block content %}
     <div class="max-w-7xl mx-auto mt-8 mb-12">
         
-        <!-- Header y Navegación -->
         <div class="md:flex md:items-center md:justify-between mb-8">
             <div class="min-w-0 flex-1">
                 <div class="flex items-center">
@@ -46,10 +45,8 @@
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
-            <!-- Columna Izquierda (2/3): Detalles y Listas -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Tarjeta de Participantes -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                         <div>
@@ -57,7 +54,7 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Personas habilitadas para votar.</p>
                         </div>
                         <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                            Total: {{ participantes_count }}
+                            Total: {{ participantes.paginator.count|default:participantes_count }}
                         </span>
                     </div>
                     
@@ -98,9 +95,45 @@
                             </div>
                         {% endif %}
                     </div>
+                    
+                    {# Paginador de Participantes #}
+                    {% if participantes.has_other_pages %}
+                    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <p class="text-sm text-gray-700 hidden sm:block">
+                            Mostrando
+                            <span class="font-medium">{{ participantes.start_index }}</span>
+                            a
+                            <span class="font-medium">{{ participantes.end_index }}</span>
+                            de
+                            <span class="font-medium">{{ participantes.paginator.count }}</span>
+                            resultados
+                        </p>
+                        <div class="flex-1 flex justify-between sm:justify-end space-x-3">
+                            {% if participantes.has_previous %}
+                                <a href="?page={{ participantes.previous_page_number }}&candidatos_page={{ candidatos.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    &larr; Anterior
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    &larr; Anterior
+                                </span>
+                            {% endif %}
+
+                            {% if participantes.has_next %}
+                                <a href="?page={{ participantes.next_page_number }}&candidatos_page={{ candidatos.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Siguiente &rarr;
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    Siguiente &rarr;
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                 </div>
 
-                <!-- Tarjeta de Candidatos -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                         <div>
@@ -108,7 +141,7 @@
                             <p class="mt-1 max-w-2xl text-sm text-gray-500">Opciones disponibles en la papeleta.</p>
                         </div>
                         <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                            Total: {{ candidatos_count }}
+                            Total: {{ candidatos.paginator.count | default:candidatos_count }}
                         </span>
                     </div>
                     
@@ -166,13 +199,48 @@
                             </div>
                         {% endif %}
                     </div>
+                    
+                    {# Paginador de Candidatos #}
+                    {% if candidatos.has_other_pages %}
+                    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <p class="text-sm text-gray-700 hidden sm:block">
+                            Mostrando
+                            <span class="font-medium">{{ candidatos.start_index }}</span>
+                            a
+                            <span class="font-medium">{{ candidatos.end_index }}</span>
+                            de
+                            <span class="font-medium">{{ candidatos.paginator.count }}</span>
+                            resultados
+                        </p>
+                        <div class="flex-1 flex justify-between sm:justify-end space-x-3">
+                            {% if candidatos.has_previous %}
+                                <a href="?candidatos_page={{ candidatos.previous_page_number }}&page={{ participantes.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    &larr; Anterior
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    &larr; Anterior
+                                </span>
+                            {% endif %}
+
+                            {% if candidatos.has_next %}
+                                <a href="?candidatos_page={{ candidatos.next_page_number }}&page={{ participantes.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Siguiente &rarr;
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    Siguiente &rarr;
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                 </div>
             </div>
 
-            <!-- Columna Derecha (1/3): Estadísticas y Configuración -->
             <div class="space-y-6">
                 
-                <!-- Panel de Estadísticas -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-amber-50 border-b border-amber-100">
                         <h3 class="text-base font-semibold leading-6 text-amber-900 flex items-center">
@@ -190,7 +258,6 @@
                                 <dd class="mt-1 text-3xl font-semibold tracking-tight text-green-600">
                                     {{ participacion_porcentaje|floatformat:1 }}%
                                 </dd>
-                                <!-- CORRECCIÓN AQUÍ: Usar stringformat:".0f" para asegurar formato sin coma -->
                                 <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                                     <div class="bg-green-600 h-1.5 rounded-full" style="width: {{ participacion_porcentaje|default:0|stringformat:'.0f' }}%"></div>
                                 </div>
@@ -207,7 +274,6 @@
                     </div>
                 </div>
 
-                <!-- Panel de Configuración -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-blue-50 border-b border-blue-100">
                         <h3 class="text-base font-semibold leading-6 text-blue-900 flex items-center">
