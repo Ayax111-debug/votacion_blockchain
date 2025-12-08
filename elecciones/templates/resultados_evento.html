@@ -83,7 +83,7 @@
 
         <!-- Botón Volver -->
         <div class="mt-8 flex justify-center">
-            <a href="{% url 'panel_usuario' %}" class="inline-flex items-center px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+            <a href="{% if es_admin %}{% url 'panel_admin' %}{% else %}{% url 'panel_usuario' %}{% endif %}" class="inline-flex items-center px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
                 <i class="bi bi-arrow-left mr-2"></i> Volver al Panel
             </a>
         </div>

@@ -11,6 +11,9 @@ conversions[FIELD_TYPE.TIMESTAMP] = convert_datetime
 # This avoids needing to compile mysqlclient on Windows.
 pymysql.install_as_MySQLdb()
 
+# Fix the version issue for Django 6.0
+pymysql.version_info = (2, 2, 1, "final", 0)
+
 # This will make sure the app is always imported when
 # Django starts so that shared_task will use this app.
 from .celery import app as celery_app

@@ -130,9 +130,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-cl'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Santiago'
 
 USE_I18N = True
 
@@ -169,4 +169,18 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
+
+# Email Configuration
+# Producción con Gmail - ACTIVADO
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'saiky7n7@gmail.com'
+EMAIL_HOST_PASSWORD = 'nkbjzsxbkxvpeven'  # Contraseña de aplicación
+DEFAULT_FROM_EMAIL = 'VotaciónApp <saiky7n7@gmail.com>'
+
+# Para volver a modo desarrollo (mostrar en consola), descomenta esta línea:
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 
