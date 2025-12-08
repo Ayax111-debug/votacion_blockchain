@@ -109,9 +109,16 @@
                                         </div>
                                     </div>
                                     <div class="flex-shrink-0 ml-auto">
-                                        <a href="{% url 'resultados_evento' he.id %}" class="inline-flex items-center px-3.5 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                                            <i class="bi bi-bar-chart-line mr-1.5"></i> Ver Resultados
-                                        </a>
+                                        {% if he.fecha_termino|date:"U" <= "now"|date:"U" %}
+                                            <a href="{% url 'resultados_evento' he.id %}" class="inline-flex items-center px-3.5 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                                <i class="bi bi-bar-chart-line mr-1.5"></i> Ver Resultados
+                                            </a>
+                                        {% else %}
+                                            <button disabled class="inline-flex items-center px-3.5 py-2 border border-gray-200 shadow-sm text-xs font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed">
+                                                <i class="bi bi-bar-chart-line mr-1.5"></i> Ver Resultados
+                                            </button>
+                                            <span class="text-xs text-gray-500 block mt-1 text-right">Disponible al terminar</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </li>

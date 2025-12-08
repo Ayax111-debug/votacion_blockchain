@@ -768,6 +768,15 @@ def ver_evento(request, evento_id):
 
 @requiere_votante_sesion
 def resultados_evento(request, evento_id):
+    # Validar que la votación haya terminado antes de mostrar resultados
+    evento = get_object_or_404(EventoEleccion, id=evento_id)
+    ahora = timezone.now()
+    
+    # Si la votación aún no ha terminado, mostrar alerta y redirigir
+    if ahora < evento.fecha_termino:
+        messages.warning(request, "Los resultados se mostrarán al terminar la votación.")
+        return redirect('panel_usuario')
+    
     # Aggregate votes per candidate for the given event
     from .models import Voto, Persona
     qs = Voto.objects.filter(evento_id=evento_id).values('persona_candidato__id', 'persona_candidato__nombre').annotate(votos=Count('id')).order_by('-votos')
@@ -782,6 +791,7 @@ def resultados_evento(request, evento_id):
 
     return render(request, 'resultados_evento.html', {
         'evento_id': evento_id,
+        'evento': evento,
         'resultados': resultados
     })
 
