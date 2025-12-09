@@ -304,9 +304,15 @@ def votar_evento(request, evento_id):
 def panel_usuario(request):
     votante_id = request.session.get("votante_id")
 
-    # Obtener datos de la persona
-    persona_data = Persona.objects.filter(id=votante_id).values('id', 'nombre', 'foto').first()
-    if not persona_data:
+    # Obtener datos de la persona (objeto completo para acceder a foto_display_url)
+    try:
+        persona = Persona.objects.get(id=votante_id)
+        persona_data = {
+            'id': persona.id,
+            'nombre': persona.nombre,
+            'foto_url': persona.foto_display_url
+        }
+    except Persona.DoesNotExist:
         from django.http import Http404
         raise Http404("Persona no encontrada")
 
@@ -835,12 +841,18 @@ def ver_evento(request, evento_id):
                 participantes_raw = cursor.fetchall()
                 
             participantes_lista_completa = []
+            from django.conf import settings
             for part_row in participantes_raw:
+                # Construir URL de foto si existe
+                foto_url = None
+                if part_row[3]:  # Si hay foto
+                    foto_url = settings.MEDIA_URL + part_row[3]
+                
                 participantes_lista_completa.append({
                     'persona__id': part_row[0],
                     'persona__nombre': part_row[1],
                     'persona__email': part_row[2],
-                    'persona__foto_url': part_row[3],
+                    'persona__foto_url': foto_url,
                     'ha_votado': part_row[4]
                 })
         except Exception as e:
@@ -860,6 +872,7 @@ def ver_evento(request, evento_id):
                 candidatos_raw = cursor.fetchall()
                 
             candidatos_lista_completa = []
+            from django.conf import settings
             for candidato_row in candidatos_raw:
                 # Obtener votos desde la tabla Resultado
                 try:
@@ -872,12 +885,17 @@ def ver_evento(request, evento_id):
                 except Exception:
                     votos_recibidos = 0
 
+                # Construir URL de foto si existe
+                foto_url = None
+                if candidato_row[3]:  # Si hay foto
+                    foto_url = settings.MEDIA_URL + candidato_row[3]
+
                 candidatos_lista_completa.append({
                     'persona': {
                         'id': candidato_row[0],
                         'nombre': candidato_row[1],
                         'email': candidato_row[2],
-                        'foto_display_url': candidato_row[3]
+                        'foto_display_url': foto_url
                     },
                     'fecha_registro': None,
                     'votos_recibidos': votos_recibidos
@@ -1366,15 +1384,21 @@ def asignar_participantes(request, evento_id):
             
         participantes_actuales = []
         participantes_ids = []
+        from django.conf import settings
         
         for part_row in participantes_raw:
             participantes_ids.append(part_row[0])
+            # Construir URL de foto si existe
+            foto_url = None
+            if part_row[4]:  # Si hay foto
+                foto_url = settings.MEDIA_URL + part_row[4]
+            
             participantes_actuales.append({
                 'persona__id': part_row[0],
                 'persona__nombre': part_row[1],
                 'persona__email': part_row[2],
                 'ha_votado': part_row[3],
-                'persona__foto_url': part_row[4]
+                'persona__foto_url': foto_url
             })
         
         # Obtener usuarios disponibles (votantes que no son participantes aún)
@@ -1397,12 +1421,18 @@ def asignar_participantes(request, evento_id):
             usuarios_raw = cursor.fetchall()
             
         usuarios_disponibles = []
+        from django.conf import settings
         for user_row in usuarios_raw:
+            # Construir URL de foto si existe
+            foto_url = None
+            if user_row[3]:  # Si hay foto
+                foto_url = settings.MEDIA_URL + user_row[3]
+            
             usuarios_disponibles.append({
                 'id': user_row[0],
                 'nombre': user_row[1],
                 'email': user_row[2],
-                'foto_display_url': user_row[3]
+                'foto_display_url': foto_url
             })
             
     except Exception as e:
