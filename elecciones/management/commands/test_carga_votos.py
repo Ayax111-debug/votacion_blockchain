@@ -12,7 +12,7 @@ class Command(BaseCommand):
     help = 'Ejecuta una prueba de carga de 100 votos simultáneos (Reset + Ataque)'
 
     def add_arguments(self, parser):
-        parser.add_argument('evento_id', type=str, help='22e35c822ff64609bdf6bb2cd2012a9c')
+        parser.add_argument('evento_id', type=str, help='b5d0c85c9df04728abe06ae354f67011')
 
     def handle(self, *args, **options):
         evento_id = options['evento_id']

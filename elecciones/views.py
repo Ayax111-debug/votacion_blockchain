@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.http import JsonResponse
-from .models import Persona, EventoEleccion, Candidatura, Administrador, ParticipacionEleccion, Voto
+from .models import Persona, EventoEleccion, Candidatura, Administrador, ParticipacionEleccion, Voto, Resultado
 from .forms import LoginForm, CandidatoForm, EditarPersonaForm, EventoEleccionForm, LoginForm_votante, AgregarUsuarioForm, EditarUsuarioForm
 import uuid
 import logging
@@ -20,7 +20,8 @@ from .models import (
     Candidatura, 
     Administrador, 
     ParticipacionEleccion, # <--- ESTE DEBE ESTAR ARRIBA
-    Voto
+    Voto,
+    Resultado
 )
 from django.utils import timezone
 from datetime import datetime
@@ -28,6 +29,39 @@ logger = logging.getLogger(__name__)
 import os
 import logging
 from django.views.decorators.csrf import csrf_exempt
+
+
+# ============================================================================
+# FUNCIÓN AUXILIAR: Recalcular resultados de un evento
+# ============================================================================
+def recalcular_resultados_evento(evento_id):
+    """
+    Recalcula los resultados de un evento específico desde la tabla de votos.
+    Útil para sincronizar después de migraciones o correcciones.
+    """
+    from django.db import transaction
+    
+    with transaction.atomic():
+        # Eliminar resultados existentes del evento
+        Resultado.objects.filter(evento_id=evento_id).delete()
+        
+        # Contar votos por candidato
+        votos_por_candidato = Voto.objects.filter(
+            evento_id=evento_id
+        ).values('persona_candidato').annotate(
+            total=Count('id')
+        )
+        
+        # Crear nuevos registros
+        for voto_data in votos_por_candidato:
+            Resultado.objects.create(
+                evento_id=evento_id,
+                persona_candidato_id=voto_data['persona_candidato'],
+                conteo_votos=voto_data['total']
+            )
+        
+        logger.info(f"Resultados recalculados para evento {evento_id}")
+
 from .models import Voto
 from django.db import connection
 
@@ -236,6 +270,16 @@ def votar_evento(request, evento_id):
                         evento_id=evento_id, 
                         persona_id=votante_id
                     ).update(ha_votado=True)
+                    
+                    # PASO 4: Actualizar tabla de Resultados
+                    from .models import Resultado
+                    resultado, created = Resultado.objects.get_or_create(
+                        evento_id=evento_id,
+                        persona_candidato_id=candidato_id,
+                        defaults={'conteo_votos': 0}
+                    )
+                    resultado.conteo_votos += 1
+                    resultado.save()
                 
                 logger.info(f"✓ Voto guardado en BD con éxito")
                 messages.success(request, "✅ Tu voto ha sido registrado exitosamente en la blockchain.")
@@ -294,6 +338,10 @@ def panel_usuario(request):
     # -------------------------------------------------------------------------
 
     from datetime import datetime
+    from zoneinfo import ZoneInfo
+    santiago_tz = ZoneInfo('America/Santiago')
+    ahora = datetime.now(santiago_tz)
+    
     eventos = []
     
     # Normalización de fechas con zona horaria Santiago
@@ -308,8 +356,6 @@ def panel_usuario(request):
                 try: fi = datetime.strptime(fi, '%Y-%m-%d %H:%M:%S')
                 except: fi = None
         if fi and fi.tzinfo is None:
-            from zoneinfo import ZoneInfo
-            santiago_tz = ZoneInfo('America/Santiago')
             fi = fi.replace(tzinfo=santiago_tz)
             
         # Normalizar fecha_termino
@@ -319,15 +365,17 @@ def panel_usuario(request):
                 try: ft = datetime.strptime(ft, '%Y-%m-%d %H:%M:%S')
                 except: ft = None
         if ft and ft.tzinfo is None:
-            from zoneinfo import ZoneInfo
-            santiago_tz = ZoneInfo('America/Santiago')
             ft = ft.replace(tzinfo=santiago_tz)
+
+        # Determinar si el evento ya terminó
+        evento_terminado = ft and ft <= ahora
 
         eventos.append({
             'id': ev['id'],
             'nombre': ev['nombre'],
             'fecha_inicio': fi,
             'fecha_termino': ft,
+            'terminado': evento_terminado,
         })
 
     # Filtrar historial vs disponibles
@@ -813,14 +861,14 @@ def ver_evento(request, evento_id):
                 
             candidatos_lista_completa = []
             for candidato_row in candidatos_raw:
-                # Contar votos
+                # Obtener votos desde la tabla Resultado
                 try:
-                    with connection.cursor() as cursor:
-                        cursor.execute("""
-                            SELECT COUNT(*) FROM elecciones_voto 
-                            WHERE evento_id = %s AND persona_candidato_id = %s
-                        """, [evento_id, candidato_row[0]])
-                        votos_recibidos = cursor.fetchone()[0]
+                    from .models import Resultado
+                    resultado = Resultado.objects.filter(
+                        evento_id=evento_id, 
+                        persona_candidato_id=candidato_row[0]
+                    ).first()
+                    votos_recibidos = resultado.conteo_votos if resultado else 0
                 except Exception:
                     votos_recibidos = 0
 
@@ -895,32 +943,59 @@ def ver_evento(request, evento_id):
         return redirect('panel_admin')
 
 
-@login_required
 def resultados_evento(request, evento_id):
-    # Validar que la votación haya terminado antes de mostrar resultados
+    """
+    Muestra los resultados de un evento de votación.
+    Accesible por: Admin autenticados y Votantes con sesión activa.
+    """
     evento = get_object_or_404(EventoEleccion, id=evento_id)
     ahora = timezone.now()
     
-    # Detectar si es admin o votante
-    es_admin = request.user.is_staff or Administrador.objects.filter(persona__email=request.user.email).exists()
+    # Detectar tipo de usuario
+    es_admin = request.user.is_authenticated and (request.user.is_staff or Administrador.objects.filter(persona__email=request.user.email).exists())
+    votante_id = request.session.get('votante_id')
+    es_votante = votante_id is not None
     
-    # Si la votación aún no ha terminado, mostrar alerta y redirigir
+    # DEBUG
+    print(f"=== DEBUG resultados_evento ===")
+    print(f"Evento ID: {evento_id}")
+    print(f"Es Admin: {es_admin}")
+    print(f"Votante ID en sesión: {votante_id}")
+    print(f"Es Votante: {es_votante}")
+    print(f"User authenticated: {request.user.is_authenticated}")
+    print(f"================================")
+    
+    # Si el evento NO ha terminado, redirigir al panel correspondiente
     if ahora < evento.fecha_termino:
-        messages.warning(request, "Los resultados se mostrarán al terminar la votación.")
-        return redirect('panel_admin' if es_admin else 'panel_usuario')
+        messages.warning(request, "Los resultados se mostrarán cuando la votación termine.")
+        if es_admin:
+            return redirect('panel_admin')
+        elif es_votante:
+            return redirect('panel_usuario')
+        else:
+            messages.error(request, "Debes iniciar sesión para acceder.")
+            return redirect('login_votante')
     
-    # Aggregate votes per candidate for the given event
-    from .models import Voto, Persona
-    qs = Voto.objects.filter(evento_id=evento_id).values('persona_candidato__id', 'persona_candidato__nombre').annotate(votos=Count('id')).order_by('-votos')
+    # El evento YA TERMINÓ - mostrar resultados
+    # Permitir acceso si es admin O votante con sesión
+    if not es_admin and not es_votante:
+        messages.error(request, "Debes iniciar sesión para ver los resultados.")
+        return redirect('login_votante')
+    
+    # Obtener resultados desde la tabla Resultado
+    from .models import Resultado
+    resultados_qs = Resultado.objects.filter(evento_id=evento_id).select_related('persona_candidato').order_by('-conteo_votos')
 
     resultados = []
-    for r in qs:
+    for r in resultados_qs:
         resultados.append({
-            'persona_id': r.get('persona_candidato__id'),
-            'nombre': r.get('persona_candidato__nombre'),
-            'votos': r.get('votos')
+            'persona_id': r.persona_candidato.id,
+            'nombre': r.persona_candidato.nombre,
+            'votos': r.conteo_votos
         })
 
+    print(f"DEBUG: Renderizando {len(resultados)} candidatos desde tabla Resultado")
+    
     return render(request, 'resultados_evento.html', {
         'evento_id': evento_id,
         'evento': evento,
@@ -1202,6 +1277,7 @@ def asignar_participantes(request, evento_id):
             
             if action == "add_bulk" or action == "add":
                 agregados_count = 0
+                ya_existentes = 0
                 
                 with connection.cursor() as cursor:
                     for p_id in persona_ids:
@@ -1222,10 +1298,15 @@ def asignar_participantes(request, evento_id):
                                 VALUES (%s, %s, %s, 0)
                             """, [participacion_id, evento_id_clean, persona_id_clean])
                             agregados_count += 1
+                        else:
+                            ya_existentes += 1
                 
-                if agregados_count > 0:
+                # Mostrar UN SOLO mensaje consolidado
+                if agregados_count > 0 and ya_existentes > 0:
+                    messages.success(request, f"Se agregaron {agregados_count} participantes. {ya_existentes} ya estaban asignados.")
+                elif agregados_count > 0:
                     messages.success(request, f"Se agregaron {agregados_count} participantes correctamente.")
-                else:
+                elif ya_existentes > 0:
                     messages.info(request, "Los usuarios seleccionados ya eran participantes.")
 
             elif action == "remove_bulk" or action == "remove":
