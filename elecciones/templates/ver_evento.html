@@ -5,7 +5,6 @@
 {% block content %}
     <div class="max-w-7xl mx-auto mt-8 mb-12">
         
-        <!-- Header y Navegación -->
         <div class="md:flex md:items-center md:justify-between mb-8">
             <div class="min-w-0 flex-1">
                 <div class="flex items-center">
@@ -46,10 +45,8 @@
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
-            <!-- Columna Izquierda (2/3): Detalles y Listas -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Tarjeta de Participantes -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                         <div>
@@ -98,9 +95,46 @@
                             </div>
                         {% endif %}
                     </div>
+                    
+                    {# Paginador de Participantes #}
+                    {% if participantes.has_other_pages %}
+                    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <p class="text-sm text-gray-700 hidden sm:block">
+                            Mostrando
+                            <span class="font-medium">{{ participantes.start_index }}</span>
+                            a
+                            <span class="font-medium">{{ participantes.end_index }}</span>
+                            de
+                            <span class="font-medium">{{ participantes.paginator.count }}</span>
+                            resultados
+                        </p>
+                        <div class="flex-1 flex justify-between sm:justify-end space-x-3">
+                            {% if participantes.has_previous %}
+                                <a href="?page={{ participantes.previous_page_number }}&candidatos_page={{ candidatos.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    &larr; Anterior
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    &larr; Anterior
+                                </span>
+                            {% endif %}
+
+                            {% if participantes.has_next %}
+                                <a href="?page={{ participantes.next_page_number }}&candidatos_page={{ candidatos.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Siguiente &rarr;
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    Siguiente &rarr;
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                 </div>
 
-                <!-- Tarjeta de Candidatos -->
+                {% if evento.estado == 'Terminado' %}
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                         <div>
@@ -118,8 +152,6 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 sm:pl-6">Candidato</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Registro</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Votos</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
@@ -149,11 +181,6 @@
                                                     <span class="text-gray-400">-</span>
                                                 {% endif %}
                                             </td>
-                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                <span class="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                                                    {{ candidato.votos_recibidos|default:0 }}
-                                                </span>
-                                            </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
@@ -166,13 +193,62 @@
                             </div>
                         {% endif %}
                     </div>
+                    
+                    {# Paginador de Candidatos #}
+                    {% if candidatos.has_other_pages %}
+                    <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                        <p class="text-sm text-gray-700 hidden sm:block">
+                            Mostrando
+                            <span class="font-medium">{{ candidatos.start_index }}</span>
+                            a
+                            <span class="font-medium">{{ candidatos.end_index }}</span>
+                            de
+                            <span class="font-medium">{{ candidatos.paginator.count }}</span>
+                            resultados
+                        </p>
+                        <div class="flex-1 flex justify-between sm:justify-end space-x-3">
+                            {% if candidatos.has_previous %}
+                                <a href="?candidatos_page={{ candidatos.previous_page_number }}&page={{ participantes.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    &larr; Anterior
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    &larr; Anterior
+                                </span>
+                            {% endif %}
+
+                            {% if candidatos.has_next %}
+                                <a href="?candidatos_page={{ candidatos.next_page_number }}&page={{ participantes.number|default:1 }}" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Siguiente &rarr;
+                                </a>
+                            {% else %}
+                                <span class="relative inline-flex items-center rounded-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                    Siguiente &rarr;
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                 </div>
+                {% else %}
+                <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
+                    <div class="px-4 py-5 sm:px-6 bg-blue-50 border-b border-blue-100">
+                        <h3 class="text-base font-semibold leading-6 text-blue-900 flex items-center">
+                            <i class="bi bi-info-circle-fill mr-2"></i> Candidatos
+                        </h3>
+                    </div>
+                    <div class="px-4 py-6 sm:p-6 text-center">
+                        <p class="text-sm text-blue-800">
+                            Los candidatos y sus votos se mostrarán cuando la votación haya terminado.
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
-            <!-- Columna Derecha (1/3): Estadísticas y Configuración -->
             <div class="space-y-6">
                 
-                <!-- Panel de Estadísticas -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-amber-50 border-b border-amber-100">
                         <h3 class="text-base font-semibold leading-6 text-amber-900 flex items-center">
@@ -190,24 +266,31 @@
                                 <dd class="mt-1 text-3xl font-semibold tracking-tight text-green-600">
                                     {{ participacion_porcentaje|floatformat:1 }}%
                                 </dd>
-                                <!-- CORRECCIÓN AQUÍ: Usar stringformat:".0f" para asegurar formato sin coma -->
                                 <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                                     <div class="bg-green-600 h-1.5 rounded-full" style="width: {{ participacion_porcentaje|default:0|stringformat:'.0f' }}%"></div>
                                 </div>
                             </div>
                         </dl>
                         
-                        {% if participantes_count > 0 and candidatos_count > 0 and evento.estado == 'En curso' %}
-                            <div class="mt-6">
-                                <a href="#" class="flex w-full items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 transition">
-                                    <i class="bi bi-eye mr-2"></i> Resultados en Vivo
-                                </a>
+                        {% if evento.estado == 'Terminado' %}
+                            {% if participantes_count > 0 and candidatos_count > 0 %}
+                                <div class="mt-6">
+                                    <a href="{% url 'resultados_evento' evento.id %}" class="flex w-full items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition">
+                                        <i class="bi bi-bar-chart-fill mr-2"></i> Ver Resultados
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p class="text-sm text-blue-800 flex items-center">
+                                    <i class="bi bi-info-circle mr-2.5 text-blue-500 text-lg"></i>
+                                    <span>Los resultados se mostrarán cuando la votación termine.</span>
+                                </p>
                             </div>
                         {% endif %}
                     </div>
                 </div>
 
-                <!-- Panel de Configuración -->
                 <div class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
                     <div class="px-4 py-5 sm:px-6 bg-blue-50 border-b border-blue-100">
                         <h3 class="text-base font-semibold leading-6 text-blue-900 flex items-center">

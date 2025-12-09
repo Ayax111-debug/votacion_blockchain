@@ -129,6 +129,28 @@ class EventoEleccionForm(forms.ModelForm):
             'fecha_termino': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
+    def clean_fecha_inicio(self):
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        if fecha_inicio:
+            # Si la fecha viene sin zona horaria del datetime-local, 
+            # la tratamos como hora local de Santiago explícitamente
+            if fecha_inicio.tzinfo is None:
+                from zoneinfo import ZoneInfo
+                santiago_tz = ZoneInfo('America/Santiago')
+                fecha_inicio = fecha_inicio.replace(tzinfo=santiago_tz)
+        return fecha_inicio
+    
+    def clean_fecha_termino(self):
+        fecha_termino = self.cleaned_data.get('fecha_termino')
+        if fecha_termino:
+            # Si la fecha viene sin zona horaria del datetime-local,
+            # la tratamos como hora local de Santiago explícitamente
+            if fecha_termino.tzinfo is None:
+                from zoneinfo import ZoneInfo
+                santiago_tz = ZoneInfo('America/Santiago')
+                fecha_termino = fecha_termino.replace(tzinfo=santiago_tz)
+        return fecha_termino
+
     def clean(self):
         cleaned_data = super().clean()
         inicio = cleaned_data.get('fecha_inicio')
@@ -137,8 +159,28 @@ class EventoEleccionForm(forms.ModelForm):
         if inicio and termino:
             if termino <= inicio:
                 raise forms.ValidationError("La fecha de término debe ser posterior a la de inicio.")
-            if inicio < timezone.now():
-                raise forms.ValidationError("La fecha de inicio no puede estar en el pasado.")
+            
+            # Permitir crear eventos hasta 5 minutos en el pasado
+            from datetime import timedelta
+            
+            ahora = timezone.now()  # Ahora usará América/Santiago
+            
+            # Las fechas ya fueron normalizadas en clean_fecha_inicio/termino
+            diferencia_segundos = (ahora - inicio).total_seconds()
+            diferencia_minutos = diferencia_segundos / 60
+            
+            # Permitir hasta 5 minutos en el pasado (con tolerancia de 30 segundos)
+            limite_minutos = 5.5  # 5 minutos y 30 segundos
+            
+            if diferencia_minutos > limite_minutos:
+                raise forms.ValidationError(
+                    f"La fecha de inicio no puede estar más de 5 minutos en el pasado. "
+                    f"Diferencia: {diferencia_minutos:.1f} minutos. "
+                    f"Hora actual: {ahora.strftime('%d/%m/%Y %H:%M')}, "
+                    f"Hora ingresada: {inicio.strftime('%d/%m/%Y %H:%M')}"
+                )
+        
+        return cleaned_data
    
 
 class LoginForm_votante(forms.Form):
