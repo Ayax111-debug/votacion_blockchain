@@ -1,0 +1,525 @@
+================================================================================
+                    MANUAL DE INSTALACIÓN Y OPERACIÓN
+                    Sistema de Votación con Blockchain
+                              VotaciónApp v1.0
+================================================================================
+
+ÍNDICE
+------
+1. Requisitos del Sistema
+2. Instalación Paso a Paso
+3. Configuración Inicial
+4. Configuración de Blockchain
+5. Configuración de Email
+6. Inicio del Sistema
+7. Operaciones de Mantenimiento
+8. Solución de Problemas Comunes
+9. Respaldos y Seguridad
+
+================================================================================
+1. REQUISITOS DEL SISTEMA
+================================================================================
+
+HARDWARE MÍNIMO:
+- Procesador: Intel Core i3 o equivalente
+- RAM: 4 GB
+- Disco Duro: 10 GB disponibles
+- Conexión a Internet estable
+
+SOFTWARE REQUERIDO:
+- Sistema Operativo: Windows 10/11, Linux, o macOS
+- Python 3.14 o superior
+- MySQL 8.0 o superior
+- Redis Server 5.0 o superior
+- Git (para clonar el repositorio)
+- Navegador web moderno (Chrome, Firefox, Edge)
+
+SERVICIOS EXTERNOS:
+- Cuenta de Gmail (para envío de correos)
+- Wallet de Polygon Amoy Testnet con MATIC
+
+================================================================================
+2. INSTALACIÓN PASO A PASO
+================================================================================
+
+PASO 1: INSTALAR PYTHON
+------------------------
+Windows:
+  1. Descargar Python desde https://www.python.org/downloads/
+  2. Ejecutar instalador
+  3. ✓ Marcar "Add Python to PATH"
+  4. Hacer clic en "Install Now"
+  5. Verificar instalación:
+     > python --version
+     Debe mostrar: Python 3.14.x
+
+Linux/Mac:
+  # Ubuntu/Debian
+  sudo apt update
+  sudo apt install python3.14 python3.14-venv python3-pip
+  
+  # macOS (con Homebrew)
+  brew install python@3.14
+
+PASO 2: INSTALAR MYSQL
+-----------------------
+Windows:
+  1. Descargar MySQL Installer desde https://dev.mysql.com/downloads/installer/
+  2. Seleccionar "Developer Default"
+  3. Configurar contraseña root
+  4. Iniciar MySQL Server
+
+Linux:
+  sudo apt update
+  sudo apt install mysql-server
+  sudo mysql_secure_installation
+
+macOS:
+  brew install mysql
+  brew services start mysql
+
+PASO 3: INSTALAR REDIS
+-----------------------
+Windows:
+  1. Descargar Redis desde https://github.com/microsoftarchive/redis/releases
+  2. Extraer y ejecutar redis-server.exe
+  
+  O usar WSL2:
+  wsl --install
+  sudo apt install redis-server
+  sudo service redis-server start
+
+Linux:
+  sudo apt install redis-server
+  sudo systemctl start redis
+  sudo systemctl enable redis
+
+macOS:
+  brew install redis
+  brew services start redis
+
+PASO 4: CLONAR EL REPOSITORIO
+------------------------------
+1. Abrir terminal/CMD
+2. Navegar a carpeta deseada:
+   cd C:\Proyectos  (Windows)
+   cd ~/proyectos   (Linux/Mac)
+
+3. Clonar repositorio:
+   git clone https://github.com/Ayax111-debug/votacion_blockchain.git
+   cd votacion_blockchain
+
+PASO 5: CREAR ENTORNO VIRTUAL
+------------------------------
+Windows:
+  python -m venv venv
+  venv\Scripts\activate
+
+Linux/Mac:
+  python3 -m venv venv
+  source venv/bin/activate
+
+Nota: Cuando el entorno esté activo verás (venv) al inicio de la línea
+
+PASO 6: INSTALAR DEPENDENCIAS
+------------------------------
+Con el entorno virtual activado:
+  pip install --upgrade pip
+  pip install -r requirements.txt
+
+Esto instalará aproximadamente 90+ paquetes. Puede tardar 5-10 minutos.
+
+PASO 7: CONFIGURAR BASE DE DATOS
+---------------------------------
+1. Acceder a MySQL:
+   mysql -u root -p
+   [Ingresar contraseña root]
+
+2. Crear base de datos:
+   CREATE DATABASE votacion_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   
+3. Crear usuario:
+   CREATE USER 'votacion_user'@'localhost' IDENTIFIED BY 'tu_contraseña_segura';
+   
+4. Otorgar permisos:
+   GRANT ALL PRIVILEGES ON votacion_db.* TO 'votacion_user'@'localhost';
+   FLUSH PRIVILEGES;
+   EXIT;
+
+5. Verificar conexión:
+   mysql -u votacion_user -p votacion_db
+   [Ingresar contraseña del usuario]
+
+================================================================================
+3. CONFIGURACIÓN INICIAL
+================================================================================
+
+PASO 1: CONFIGURAR VARIABLES DE ENTORNO
+----------------------------------------
+Crear archivo .env en la raíz del proyecto:
+
+# Copiar plantilla
+cp .env.example .env  (Linux/Mac)
+copy .env.example .env  (Windows)
+
+# Editar .env con los siguientes valores:
+
+# Base de datos
+DB_NAME=votacion_db
+DB_USER=votacion_user
+DB_PASSWORD=tu_contraseña_segura
+DB_HOST=localhost
+DB_PORT=3306
+
+# Django
+SECRET_KEY=genera-una-clave-aleatoria-aqui-minimo-50-caracteres
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+
+# Email (configurar después)
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+
+# Blockchain (configurar después)
+POLYGON_RPC_URL=https://rpc-amoy.polygon.technology
+WALLET_PRIVATE_KEY=
+CONTRACT_ADDRESS=0x64a11B612dF868f8680523494A6b6c1743dfd44a
+
+PASO 2: GENERAR SECRET_KEY
+---------------------------
+Ejecutar en Python:
+  python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+
+Copiar el resultado y pegarlo en .env como SECRET_KEY
+
+PASO 3: APLICAR MIGRACIONES
+----------------------------
+Con el entorno virtual activado:
+  python manage.py migrate
+
+Debe mostrar:
+  Running migrations:
+    Applying contenttypes.0001_initial... OK
+    Applying auth.0001_initial... OK
+    [...]
+    Applying elecciones.0001_initial... OK
+
+PASO 4: CREAR SUPERUSUARIO
+---------------------------
+  python manage.py createsuperuser
+
+Ingresar:
+  - Username: admin
+  - Email: tu_email@example.com
+  - Password: [contraseña segura]
+  - Password (again): [repetir contraseña]
+
+PASO 5: POBLAR TABLA DE RESULTADOS (Si hay datos existentes)
+-------------------------------------------------------------
+Si tienes votos existentes en la base de datos:
+  python recalcular_resultados.py
+
+================================================================================
+4. CONFIGURACIÓN DE BLOCKCHAIN
+================================================================================
+
+PASO 1: OBTENER WALLET DE POLYGON AMOY
+---------------------------------------
+1. Instalar MetaMask: https://metamask.io/
+2. Crear nueva wallet o importar existente
+3. Guardar la frase semilla en lugar SEGURO (12 o 24 palabras)
+4. Exportar clave privada:
+   - Abrir MetaMask
+   - Click en los 3 puntos
+   - "Detalles de cuenta"
+   - "Exportar clave privada"
+   - Ingresar contraseña
+   - Copiar clave privada (empieza con 0x)
+
+5. Agregar red Polygon Amoy:
+   - Nombre: Polygon Amoy Testnet
+   - RPC URL: https://rpc-amoy.polygon.technology
+   - Chain ID: 80002
+   - Símbolo: MATIC
+   - Explorer: https://amoy.polygonscan.com
+
+PASO 2: OBTENER MATIC DE PRUEBA
+--------------------------------
+1. Visitar: https://faucet.polygon.technology/
+2. Seleccionar "Polygon Amoy"
+3. Pegar tu dirección de wallet
+4. Completar CAPTCHA
+5. Click "Submit"
+6. Esperar 1-2 minutos
+7. Recibirás 0.1 MATIC (suficiente para ~1000 votos)
+
+Nota: Puedes solicitar más MATIC cada 24 horas
+
+PASO 3: CONFIGURAR CREDENCIALES
+--------------------------------
+Editar archivo .env:
+
+WALLET_PRIVATE_KEY=tu_clave_privada_aqui_sin_0x
+CONTRACT_ADDRESS=0x64a11B612dF868f8680523494A6b6c1743dfd44a
+
+⚠️ IMPORTANTE:
+- NO compartir tu clave privada
+- NO subir .env a GitHub
+- Verificar que .env esté en .gitignore
+
+PASO 4: VERIFICAR CONFIGURACIÓN
+--------------------------------
+  python
+  >>> from elecciones.web3_utils import create_voting_blockchain
+  >>> blockchain = create_voting_blockchain()
+  >>> print(f"Wallet: {blockchain.account.address}")
+  >>> print(f"Balance: {blockchain.get_balance()} MATIC")
+  >>> exit()
+
+Debe mostrar tu dirección y balance > 0
+
+================================================================================
+5. CONFIGURACIÓN DE EMAIL
+================================================================================
+
+PASO 1: PREPARAR CUENTA DE GMAIL
+---------------------------------
+1. Iniciar sesión en Gmail
+2. Ir a: https://myaccount.google.com/security
+3. Activar "Verificación en 2 pasos"
+4. Seguir los pasos para configurar
+
+PASO 2: GENERAR CONTRASEÑA DE APLICACIÓN
+-----------------------------------------
+1. Ir a: https://myaccount.google.com/apppasswords
+2. Seleccionar:
+   - Aplicación: "Correo"
+   - Dispositivo: "Otro (nombre personalizado)"
+   - Nombre: "VotacionApp"
+3. Click "Generar"
+4. Copiar la contraseña de 16 caracteres (sin espacios)
+   Ejemplo: abcdEFGH1234ijkl
+
+PASO 3: CONFIGURAR EN .ENV
+---------------------------
+Editar .env:
+
+EMAIL_HOST_USER=tu_email@gmail.com
+EMAIL_HOST_PASSWORD=abcdEFGH1234ijkl
+
+PASO 4: VERIFICAR ENVÍO
+------------------------
+  python
+  >>> from django.core.mail import send_mail
+  >>> send_mail(
+  ...     'Prueba',
+  ...     'Email de prueba desde VotacionApp',
+  ...     'tu_email@gmail.com',
+  ...     ['destinatario@example.com'],
+  ... )
+  >>> exit()
+
+Verificar que llegue el correo al destinatario
+
+================================================================================
+6. INICIO DEL SISTEMA
+================================================================================
+
+INICIO NORMAL (Desarrollo)
+---------------------------
+1. Activar entorno virtual:
+   Windows: venv\Scripts\activate
+   Linux/Mac: source venv/bin/activate
+
+2. Iniciar servidor Django:
+   python manage.py runserver
+
+3. Acceder al sistema:
+   - Admin: http://127.0.0.1:8000/login/
+   - Votantes: http://127.0.0.1:8000/login-votante/
+
+INICIO CON CELERY (Tareas Asíncronas)
+--------------------------------------
+Abrir 3 terminales:
+
+Terminal 1 - Django:
+  venv\Scripts\activate
+  python manage.py runserver
+
+Terminal 2 - Celery Worker:
+  venv\Scripts\activate
+  celery -A votacion worker -l info
+
+Terminal 3 - Celery Beat (Tareas Programadas):
+  venv\Scripts\activate
+  celery -A votacion beat -l info
+
+INICIO EN PRODUCCIÓN
+---------------------
+Usar Gunicorn (Linux) o Waitress (Windows):
+
+Linux:
+  gunicorn votacion.wsgi:application --bind 0.0.0.0:8000
+
+Windows:
+  waitress-serve --host=0.0.0.0 --port=8000 votacion.wsgi:application
+
+Configurar Nginx como proxy inverso (recomendado)
+
+================================================================================
+7. OPERACIONES DE MANTENIMIENTO
+================================================================================
+
+RESPALDOS DE BASE DE DATOS
+---------------------------
+Crear respaldo:
+  mysqldump -u votacion_user -p votacion_db > backup_$(date +%Y%m%d).sql
+
+Restaurar respaldo:
+  mysql -u votacion_user -p votacion_db < backup_20251211.sql
+
+RECALCULAR RESULTADOS
+----------------------
+Si hay inconsistencias en los conteos:
+  python recalcular_resultados.py
+
+LIMPIAR VOTOS FALLIDOS
+-----------------------
+Eliminar votos con estado "pending" o "failed":
+  python limpiar_votos_fallidos.py
+
+VERIFICAR FLUJO DE VOTOS
+-------------------------
+Ejecutar script de verificación:
+  python scripts/check_vote_flow.py
+
+ACTUALIZAR DEPENDENCIAS
+------------------------
+  pip install --upgrade -r requirements.txt
+
+APLICAR NUEVAS MIGRACIONES
+---------------------------
+Después de cambios en modelos:
+  python manage.py makemigrations
+  python manage.py migrate
+
+LIMPIAR ARCHIVOS ESTÁTICOS
+---------------------------
+  python manage.py collectstatic --noinput
+
+LOGS Y MONITOREO
+----------------
+Logs de Django: Ver consola donde corre manage.py runserver
+Logs de Celery: Ver consola de worker
+Logs de MySQL: /var/log/mysql/error.log (Linux)
+
+================================================================================
+8. SOLUCIÓN DE PROBLEMAS COMUNES
+================================================================================
+
+PROBLEMA: "No module named 'django'"
+SOLUCIÓN:
+  1. Verificar que el entorno virtual esté activado
+  2. Reinstalar dependencias:
+     pip install -r requirements.txt
+
+PROBLEMA: Error de conexión a MySQL
+SOLUCIÓN:
+  1. Verificar que MySQL esté corriendo:
+     Windows: Services > MySQL80
+     Linux: sudo systemctl status mysql
+  2. Verificar credenciales en .env
+  3. Probar conexión:
+     mysql -u votacion_user -p votacion_db
+
+PROBLEMA: "Error al enviar voto a blockchain"
+SOLUCIÓN:
+  1. Verificar balance de MATIC:
+     python -c "from elecciones.web3_utils import create_voting_blockchain; bc = create_voting_blockchain(); print(bc.get_balance())"
+  2. Si balance = 0, obtener más MATIC del faucet
+  3. Verificar conexión a Internet
+  4. Verificar RPC_URL en .env
+
+PROBLEMA: Emails no se envían
+SOLUCIÓN:
+  1. Verificar configuración en .env
+  2. Verificar contraseña de aplicación (no la contraseña de Gmail)
+  3. Revisar en consola del servidor el error específico
+  4. Verificar que la verificación en 2 pasos esté activa
+
+PROBLEMA: Imágenes no se cargan
+SOLUCIÓN:
+  1. Verificar que existe la carpeta media/images/usuarios/
+  2. Verificar permisos de escritura
+  3. Verificar MEDIA_URL y MEDIA_ROOT en settings.py
+  4. En producción, configurar servidor web para servir /media/
+
+PROBLEMA: "Port already in use"
+SOLUCIÓN:
+  1. Cerrar proceso anterior:
+     Windows: Ctrl+C en terminal o cerrar ventana
+     Linux: pkill -f runserver
+  2. Usar otro puerto:
+     python manage.py runserver 8001
+
+PROBLEMA: Votos no se registran en blockchain
+SOLUCIÓN:
+  1. Verificar logs en consola (buscar "blockchain")
+  2. Verificar que web3 esté instalado:
+     pip show web3
+  3. Verificar balance MATIC > 0.001
+  4. Ejecutar script de limpieza:
+     python limpiar_votos_fallidos.py
+
+================================================================================
+9. RESPALDOS Y SEGURIDAD
+================================================================================
+
+RESPALDOS RECOMENDADOS
+-----------------------
+1. Base de datos: Diario
+   Script automatizado (Linux crontab):
+   0 2 * * * mysqldump -u votacion_user -pPASSWORD votacion_db > /backups/db_$(date +\%Y\%m\%d).sql
+
+2. Archivos media: Semanal
+   cp -r media/ /backups/media_$(date +%Y%m%d)/
+
+3. Código fuente: Después de cada cambio
+   git commit -am "Descripción cambios"
+   git push origin main
+
+SEGURIDAD
+---------
+1. Cambiar SECRET_KEY en producción
+2. DEBUG=False en producción
+3. Configurar ALLOWED_HOSTS correctamente
+4. Usar HTTPS en producción (certificado SSL)
+5. NO exponer .env ni credenciales
+6. Actualizar dependencias regularmente:
+   pip list --outdated
+
+7. Configurar firewall:
+   - Permitir solo puerto 80/443 (HTTP/HTTPS)
+   - Bloquear acceso directo a MySQL (puerto 3306)
+   - Bloquear acceso directo a Redis (puerto 6379)
+
+8. Monitorear logs de acceso
+9. Implementar rate limiting
+10. Backups automáticos y encriptados
+
+USUARIOS Y PERMISOS
+-------------------
+1. Crear usuarios con privilegios mínimos necesarios
+2. Rotar contraseñas periódicamente
+3. Revisar logs de acceso de admin
+4. Deshabilitar cuentas inactivas
+
+CONTACTO Y SOPORTE
+------------------
+- Repositorio: https://github.com/Ayax111-debug/votacion_blockchain
+- Issues: https://github.com/Ayax111-debug/votacion_blockchain/issues
+- Email: saiky7n7@gmail.com
+
+================================================================================
+                           FIN DEL MANUAL DE INSTALACIÓN
+================================================================================

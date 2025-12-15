@@ -174,11 +174,11 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes hard limit
 # Producción con Gmail - ACTIVADO
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
+EMAIL_PORT = "*****"
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'saiky7n7@gmail.com'
-EMAIL_HOST_PASSWORD = 'nkbjzsxbkxvpeven'  # Contraseña de aplicación
-DEFAULT_FROM_EMAIL = 'VotaciónApp <saiky7n7@gmail.com>'
+EMAIL_HOST_USER = "*****"
+EMAIL_HOST_PASSWORD = "*****" # Contraseña de aplicación
+DEFAULT_FROM_EMAIL = 'VotaciónApp <"*****">'
 
 # Para volver a modo desarrollo (mostrar en consola), descomenta esta línea:
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

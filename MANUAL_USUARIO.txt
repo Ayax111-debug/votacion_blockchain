@@ -1,0 +1,780 @@
+================================================================================
+                        MANUAL DE USUARIO
+                Sistema de Votación con Blockchain
+                        VotaciónApp v1.0
+================================================================================
+
+ÍNDICE
+------
+1. Introducción al Sistema
+2. Acceso al Sistema
+3. Módulo de Administrador
+4. Módulo de Votante
+5. Preguntas Frecuentes
+6. Glosario de Términos
+
+================================================================================
+1. INTRODUCCIÓN AL SISTEMA
+================================================================================
+
+¿QUÉ ES VOTACIÓNAPP?
+---------------------
+VotaciónApp es un sistema de votación electrónica que utiliza tecnología 
+blockchain para garantizar la transparencia, seguridad e inmutabilidad de los 
+votos emitidos. Cada voto se registra en la blockchain de Polygon, asegurando 
+que no pueda ser alterado o eliminado.
+
+CARACTERÍSTICAS PRINCIPALES
+----------------------------
+✓ Registro seguro de votos en blockchain
+✓ Verificación de participantes por evento
+✓ Asignación flexible de candidatos
+✓ Resultados en tiempo real
+✓ Envío automático de credenciales por email
+✓ Historial de votaciones
+✓ Interfaz intuitiva y moderna
+
+ROLES DEL SISTEMA
+------------------
+1. ADMINISTRADOR
+   - Crea y gestiona eventos de votación
+   - Asigna participantes (quiénes pueden votar)
+   - Asigna candidatos (opciones de voto)
+   - Crea usuarios votantes
+   - Consulta estadísticas y resultados
+
+2. VOTANTE
+   - Visualiza eventos asignados
+   - Emite votos
+   - Consulta historial de votaciones
+   - Ve resultados de eventos finalizados
+
+================================================================================
+2. ACCESO AL SISTEMA
+================================================================================
+
+ACCESO COMO ADMINISTRADOR
+--------------------------
+1. Abrir navegador web (Chrome, Firefox, Edge)
+2. Ingresar URL: http://127.0.0.1:8000/login/
+3. Ingresar credenciales:
+   - Usuario: admin (o el que te proporcionaron)
+   - Contraseña: [tu contraseña]
+4. Click en "Iniciar Sesión"
+
+ACCESO COMO VOTANTE
+--------------------
+1. Abrir navegador web
+2. Ingresar URL: http://127.0.0.1:8000/login-votante/
+3. Ingresar credenciales:
+   - RUT: 12345678-9 (sin puntos, con guión)
+   - Clave: ABC123 (la que recibiste por email)
+4. Click en "Ingresar"
+
+RECUPERACIÓN DE CREDENCIALES
+-----------------------------
+Votantes:
+  - Contactar al administrador del sistema
+  - El admin puede regenerar tu clave y enviártela por email
+
+Administradores:
+  - Contactar al administrador del sistema
+  - Usar comando Django: python manage.py changepassword admin
+
+CERRAR SESIÓN
+--------------
+Administrador: Click en "Cerrar Sesión" (esquina superior derecha)
+Votante: Click en "Cerrar Sesión" (en el banner superior)
+
+================================================================================
+3. MÓDULO DE ADMINISTRADOR
+================================================================================
+
+PANEL PRINCIPAL
+---------------
+Al iniciar sesión verás:
+- Lista de eventos creados
+- Acceso rápido a crear nuevo evento
+- Estado de cada evento (Futuro, En curso, Terminado)
+- Opciones para gestionar usuarios
+
+────────────────────────────────────────────────────────────────────────────────
+3.1 GESTIÓN DE USUARIOS
+────────────────────────────────────────────────────────────────────────────────
+
+CREAR NUEVO USUARIO VOTANTE
+----------------------------
+1. Click en "Usuarios" > "Agregar Usuario"
+2. Completar formulario:
+   - Nombre completo
+   - Email (obligatorio para recibir credenciales)
+   - RUT (sin puntos, con guión. Ej: 12345678-9)
+   - Foto de perfil (opcional)
+   - Marcar ☑ "Es votante"
+
+3. Click en "Guardar Usuario"
+
+4. Sistema automáticamente:
+   ✓ Genera clave aleatoria (3 letras + 3 números)
+   ✓ Envía email con credenciales al usuario
+   ✓ Muestra confirmación en pantalla
+
+Ejemplo de email recibido:
+┌──────────────────────────────────────────────┐
+│ Asunto: Tus credenciales - VotaciónApp      │
+│                                              │
+│ Hola Juan Pérez,                            │
+│                                              │
+│ Se ha creado tu cuenta en VotaciónApp       │
+│                                              │
+│ RUT: 12345678-9                             │
+│ Contraseña: ABC123                          │
+│                                              │
+│ Ingresa en: http://127.0.0.1:8000          │
+└──────────────────────────────────────────────┘
+
+EDITAR USUARIO
+--------------
+1. En Panel Admin, click en "Usuarios"
+2. Click en el usuario a editar
+3. Modificar campos deseados
+4. Click "Guardar Cambios"
+
+Nota: No se puede cambiar el RUT una vez creado
+
+DESACTIVAR USUARIO
+------------------
+1. Editar usuario
+2. Desmarcar ☐ "Es votante"
+3. Guardar cambios
+→ El usuario ya no podrá iniciar sesión
+
+────────────────────────────────────────────────────────────────────────────────
+3.2 GESTIÓN DE EVENTOS
+────────────────────────────────────────────────────────────────────────────────
+
+CREAR NUEVO EVENTO DE VOTACIÓN
+-------------------------------
+1. En Panel Admin, click "Crear Nuevo Evento"
+
+2. Completar datos del evento:
+   ┌─────────────────────────────────────┐
+   │ Nombre: Elección Delegado 2025     │
+   │ Fecha Inicio: 11/12/2025 09:00     │
+   │ Fecha Término: 11/12/2025 18:00    │
+   │ ☑ Activo                           │
+   └─────────────────────────────────────┘
+
+3. Click "Crear Evento"
+
+4. Pasos siguientes (obligatorios):
+   a) Asignar Participantes
+   b) Asignar Candidatos
+
+⚠️ IMPORTANTE:
+- Fecha inicio debe ser menor que fecha término
+- No se puede votar si faltan participantes o candidatos
+- Las fechas incluyen hora (formato 24 horas)
+
+ESTADOS DE UN EVENTO
+--------------------
+🔵 FUTURO: Fecha de inicio no ha llegado
+   - No se puede votar aún
+   - Se puede editar todo
+
+🟢 EN CURSO: Entre fecha inicio y término
+   - Votación activa
+   - No se pueden eliminar participantes que ya votaron
+   - No se pueden eliminar candidatos
+
+🔴 TERMINADO: Fecha de término pasó
+   - No se puede votar
+   - Se pueden ver resultados
+   - Sistema cierra automáticamente
+
+EDITAR EVENTO
+-------------
+1. Click en el evento en el panel
+2. Click "Ver Evento"
+3. Modificar nombre o fechas
+4. Guardar cambios
+
+DESACTIVAR EVENTO
+-----------------
+1. Ver evento
+2. Click "Desactivar Evento"
+3. Confirmar acción
+
+Efecto: Evento no aparece como disponible para votar, aunque las fechas 
+sean válidas. Útil para pausar votaciones temporalmente.
+
+ACTIVAR EVENTO
+--------------
+1. Ver evento desactivado
+2. Click "Activar Evento"
+3. Confirmar acción
+
+────────────────────────────────────────────────────────────────────────────────
+3.3 ASIGNAR PARTICIPANTES
+────────────────────────────────────────────────────────────────────────────────
+
+¿QUÉ SON PARTICIPANTES?
+------------------------
+Son los usuarios que PUEDEN votar en un evento específico. Un usuario puede 
+ser participante en algunos eventos y no en otros.
+
+ASIGNAR PARTICIPANTES A UN EVENTO
+----------------------------------
+1. Ver evento > Click "Participantes"
+
+2. Verás dos listas:
+   ┌─────────────────────┬─────────────────────┐
+   │ Usuarios Disponibles│ Participantes Actual│
+   │                     │                     │
+   │ □ Juan Pérez        │ ☑ María López      │
+   │ □ Pedro González    │ ☑ Ana Martínez     │
+   │ □ Carlos Rojas      │                     │
+   └─────────────────────┴─────────────────────┘
+
+3. Asignar participantes:
+   
+   OPCIÓN A - Individual:
+   - Marcar ☑ usuario en "Disponibles"
+   - Click "Agregar Seleccionados" (→)
+
+   OPCIÓN B - Masiva:
+   - Marcar ☑ "Seleccionar todos"
+   - Click "Agregar Seleccionados"
+
+   OPCIÓN C - Por búsqueda:
+   - Usar caja de búsqueda
+   - Filtrar por nombre, RUT o email
+   - Marcar usuarios deseados
+   - Agregar
+
+4. Confirmar que aparezcan en "Participantes Actuales"
+
+QUITAR PARTICIPANTES
+--------------------
+1. En lista "Participantes Actuales"
+2. Marcar ☑ participante a quitar
+3. Click "Quitar Seleccionados" (←)
+
+⚠️ RESTRICCIÓN:
+No se puede quitar participantes que ya votaron (aparece ícono 🔒)
+
+VERIFICAR PARTICIPANTES
+-----------------------
+En "Participantes Actuales" verás:
+- ✅ Votó: Usuario ya emitió su voto
+- ⏳ Pendiente: Usuario no ha votado
+
+────────────────────────────────────────────────────────────────────────────────
+3.4 ASIGNAR CANDIDATOS
+────────────────────────────────────────────────────────────────────────────────
+
+¿QUÉ SON CANDIDATOS?
+---------------------
+Son las opciones de voto disponibles en un evento. SOLO los participantes 
+asignados pueden ser candidatos.
+
+ASIGNAR CANDIDATOS A UN EVENTO
+-------------------------------
+1. Ver evento > Click "Candidatos"
+
+2. Verás lista de participantes del evento:
+   ┌──────────────────────────────┐
+   │ Opciones de Voto            │
+   │                              │
+   │ □ Juan Pérez                │
+   │ □ María López               │
+   │ □ Ana Martínez              │
+   └──────────────────────────────┘
+
+3. Marcar ☑ quiénes serán candidatos
+
+4. Click "Guardar Candidatos"
+
+EJEMPLO DE CONFIGURACIÓN
+-------------------------
+Evento: Elección de Delegado
+
+Participantes (pueden votar):
+  - Juan Pérez
+  - María López
+  - Pedro González
+  - Ana Martínez
+  - Carlos Rojas
+
+Candidatos (opciones de voto):
+  - Juan Pérez ✓
+  - María López ✓
+  - Ana Martínez ✓
+
+Resultado:
+  - Juan, María, Pedro, Ana y Carlos PUEDEN votar
+  - Solo pueden votar por Juan, María o Ana
+  - Pedro y Carlos NO son candidatos, pero SÍ pueden votar
+
+────────────────────────────────────────────────────────────────────────────────
+3.5 VER ESTADÍSTICAS Y RESULTADOS
+────────────────────────────────────────────────────────────────────────────────
+
+VER ESTADÍSTICAS DE EVENTO
+---------------------------
+1. Click en evento
+2. Click "Ver Evento"
+
+Información disponible:
+┌─────────────────────────────────────────┐
+│ ESTADÍSTICAS                           │
+│                                         │
+│ Votos Emitidos: 45                     │
+│ Participación: 75.0%                   │
+│ ████████████░░░░ [45/60]              │
+│                                         │
+│ CONFIGURACIÓN                          │
+│ ✅ Participantes: 60                   │
+│ ✅ Candidatos: 5                       │
+│ Estado: ✅ Listo                       │
+└─────────────────────────────────────────┘
+
+VER RESULTADOS (Solo eventos terminados)
+-----------------------------------------
+1. Ver evento terminado
+2. Click "Ver Resultados"
+
+Se muestra:
+┌─────────────────────────────────────────┐
+│ RESULTADOS - Elección Delegado 2025   │
+│                                         │
+│ 🥇 1. Juan Pérez        ████████ 25    │
+│ 🥈 2. María López       ██████   15    │
+│ 🥉 3. Ana Martínez      ████     10    │
+│                                         │
+│ Total votos: 50                        │
+└─────────────────────────────────────────┘
+
+Nota: Si el evento está "En curso", el botón de resultados estará oculto 
+para mantener la confidencialidad del proceso.
+
+────────────────────────────────────────────────────────────────────────────────
+3.6 FLUJO COMPLETO - EJEMPLO PRÁCTICO
+────────────────────────────────────────────────────────────────────────────────
+
+CASO: Elección de Delegado de Curso
+------------------------------------
+
+PASO 1: Crear usuarios votantes (si no existen)
+  Usuario 1: Juan Pérez, RUT 11111111-1, juan@email.com
+  Usuario 2: María López, RUT 22222222-2, maria@email.com
+  Usuario 3: Pedro González, RUT 33333333-3, pedro@email.com
+  Usuario 4: Ana Martínez, RUT 44444444-4, ana@email.com
+
+PASO 2: Crear evento
+  Nombre: "Elección Delegado Curso 3°A"
+  Fecha inicio: 15/12/2025 08:00
+  Fecha término: 15/12/2025 20:00
+  ☑ Activo
+
+PASO 3: Asignar participantes
+  ☑ Juan Pérez
+  ☑ María López
+  ☑ Pedro González
+  ☑ Ana Martínez
+  [Todos pueden votar]
+
+PASO 4: Asignar candidatos
+  ☑ Juan Pérez
+  ☑ María López
+  [Solo Juan y María son opciones de voto]
+
+PASO 5: Verificar configuración
+  ✅ 4 participantes
+  ✅ 2 candidatos
+  Estado: ✅ Listo
+
+PASO 6: Notificar a votantes
+  - Los 4 usuarios recibieron email con credenciales
+  - Comunicar URL de votación
+  - Recordar fechas
+
+PASO 7: Monitorear votación (15/12/2025)
+  - Ver estadísticas en tiempo real
+  - Verificar participación
+  - No se pueden ver resultados aún
+
+PASO 8: Ver resultados (después del 15/12/2025 20:00)
+  - Sistema cierra automáticamente
+  - Click "Ver Resultados"
+  - Compartir con estudiantes
+
+================================================================================
+4. MÓDULO DE VOTANTE
+================================================================================
+
+PANEL DE VOTANTE
+-----------------
+Al iniciar sesión verás:
+
+┌────────────────────────────────────────────────────────────────────┐
+│ 👤 Hola, Juan Pérez                          [Cerrar Sesión]     │
+│ Bienvenido a tu panel de votación                                 │
+└────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ 📣 EVENTOS DISPONIBLES                                             │
+│                                                                     │
+│  ┌──────────────────────┐  ┌──────────────────────┐              │
+│  │ Elección Delegado    │  │ Mejor Compañero      │              │
+│  │ 🟢 Activo            │  │ 🟢 Activo            │              │
+│  │ 📅 15/12 08:00-20:00│  │ 📅 16/12 09:00-18:00│              │
+│  │ [Votar Ahora →]      │  │ [Votar Ahora →]      │              │
+│  └──────────────────────┘  └──────────────────────┘              │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ 🕒 HISTORIAL DE VOTACIONES                                         │
+│                                                                     │
+│  ✅ Presidente Estudiantil - 01/12/2025  [Ver Resultados]         │
+│  ✅ Mejor Proyecto - 05/12/2025          [Disponible al terminar]  │
+└─────────────────────────────────────────────────────────────────────┘
+
+────────────────────────────────────────────────────────────────────────────────
+4.1 EMITIR UN VOTO
+────────────────────────────────────────────────────────────────────────────────
+
+PROCESO DE VOTACIÓN
+--------------------
+1. En "Eventos Disponibles", click "Votar Ahora"
+
+2. Leer información del evento:
+   ┌──────────────────────────────────────┐
+   │ Elección Delegado Curso 3°A         │
+   │                                      │
+   │ Votación activa hasta:              │
+   │ 15 de Diciembre, 2025 - 20:00 hrs  │
+   └──────────────────────────────────────┘
+
+3. Ver candidatos disponibles:
+   ┌──────────────────────────────────────┐
+   │ Selecciona tu opción:               │
+   │                                      │
+   │  ○  👤 Juan Pérez                   │
+   │  ○  👤 María López                  │
+   └──────────────────────────────────────┘
+
+4. Seleccionar candidato haciendo click
+
+5. Confirmar selección:
+   ┌──────────────────────────────────────┐
+   │ ¿Confirmas tu voto por:             │
+   │                                      │
+   │      👤 Juan Pérez                  │
+   │                                      │
+   │ Esta acción no se puede deshacer    │
+   │                                      │
+   │  [Cancelar]  [Confirmar Voto]       │
+   └──────────────────────────────────────┘
+
+6. Click "Confirmar Voto"
+
+7. Sistema procesa (puede tardar 10-30 segundos):
+   - Genera compromiso único
+   - Envía a blockchain de Polygon
+   - Espera confirmación
+   - Guarda en base de datos
+   - Actualiza tabla de resultados
+
+8. Ver confirmación:
+   ┌──────────────────────────────────────┐
+   │  ✅ ¡VOTO REGISTRADO!                │
+   │                                      │
+   │ Tu voto ha sido registrado          │
+   │ exitosamente en la blockchain.      │
+   │                                      │
+   │ Gracias por participar.             │
+   │                                      │
+   │  [Volver al Panel]                  │
+   └──────────────────────────────────────┘
+
+⚠️ IMPORTANTE:
+- Solo puedes votar UNA vez por evento
+- No se puede cambiar el voto
+- El proceso es anónimo (tu voto no se asocia a tu identidad)
+- Tu participación SÍ queda registrada
+
+VERIFICAR TU VOTO EN BLOCKCHAIN
+--------------------------------
+Opcional - Para usuarios avanzados:
+
+1. Copiar dirección del contrato: 
+   0x64a11B612dF868f8680523494A6b6c1743dfd44a
+
+2. Visitar: https://amoy.polygonscan.com
+
+3. Pegar dirección en buscador
+
+4. Ver transacciones recientes
+
+5. Buscar tu voto por fecha/hora
+
+────────────────────────────────────────────────────────────────────────────────
+4.2 VER RESULTADOS
+────────────────────────────────────────────────────────────────────────────────
+
+ACCEDER A RESULTADOS
+---------------------
+1. En "Historial de Votaciones"
+2. Click "Ver Resultados" (solo eventos terminados)
+
+Verás:
+┌─────────────────────────────────────────┐
+│ RESULTADOS - Elección Delegado         │
+│                                         │
+│ 🥇 1. Juan Pérez        ████████ 25    │
+│ 🥈 2. María López       ██████   15    │
+│                                         │
+│ Total votos: 40                        │
+│ Participación: 80%                     │
+└─────────────────────────────────────────┘
+
+INTERPRETACIÓN
+--------------
+- Posición: Orden según votos recibidos
+- Barras: Representación visual proporcional
+- Número: Cantidad exacta de votos
+- Total: Suma de todos los votos emitidos
+- Participación: % de personas que votaron
+
+────────────────────────────────────────────────────────────────────────────────
+4.3 SITUACIONES ESPECIALES
+────────────────────────────────────────────────────────────────────────────────
+
+SI NO PUEDES VOTAR
+------------------
+Causas posibles:
+
+1. "No tienes permiso para votar en este evento"
+   → No estás asignado como participante
+   → Contactar al administrador
+
+2. "Ya has votado en este evento"
+   → Solo se puede votar una vez
+   → Tu voto ya fue registrado exitosamente
+
+3. "Este evento ha finalizado"
+   → Fecha de término ya pasó
+   → Votación cerrada
+
+4. "Este evento aún no comienza"
+   → Fecha de inicio no ha llegado
+   → Esperar a la fecha indicada
+
+5. "Este evento se encuentra desactivado"
+   → Admin pausó la votación
+   → Consultar con administrador
+
+SI EL VOTO FALLA
+----------------
+Causas posibles:
+
+1. "Error al generar el voto"
+   → Problema técnico temporal
+   → Intentar nuevamente en 1 minuto
+
+2. "La blockchain rechazó tu voto"
+   → Problema de conexión
+   → Sistema sin fondos MATIC
+   → Contactar administrador
+
+3. Página se queda cargando
+   → La blockchain puede tardar hasta 60 segundos
+   → NO refrescar la página
+   → Esperar mensaje de confirmación
+
+Si después de 2 minutos no hay respuesta:
+   → Refrescar página
+   → Verificar en Panel si el voto quedó registrado
+   → Si dice "Ya votaste", el voto SÍ se registró
+   → Si sigue disponible, intentar nuevamente
+
+OLVIDÉ MI CLAVE
+---------------
+1. Contactar al administrador
+2. Proporcionar tu RUT
+3. Admin puede:
+   - Regenerar tu clave
+   - Enviártela por email
+   - Dártela personalmente
+
+CAMBIAR MI INFORMACIÓN
+-----------------------
+Los votantes NO pueden editar su propia información.
+Contactar al administrador para:
+- Cambiar email
+- Actualizar foto
+- Corregir nombre
+
+================================================================================
+5. PREGUNTAS FRECUENTES
+================================================================================
+
+VOTANTES
+--------
+P: ¿Puedo ver por quién votaron los demás?
+R: No. Los votos son anónimos. Solo se registra que votaste, no tu elección.
+
+P: ¿Puedo cambiar mi voto?
+R: No. Una vez confirmado, el voto es inmutable (no se puede modificar).
+
+P: ¿Por qué tarda tanto en procesar mi voto?
+R: El registro en blockchain puede tardar 10-60 segundos. Es normal.
+
+P: ¿Puedo votar desde mi celular?
+R: Sí, el sistema es responsive y funciona en móviles.
+
+P: ¿Necesito instalar algo?
+R: No, solo necesitas un navegador web actualizado.
+
+P: ¿Qué pasa si cierro el navegador mientras voto?
+R: Si ya confirmaste, el voto se procesa. Si no, deberás votar nuevamente.
+
+P: ¿Puedo votar en varios eventos a la vez?
+R: Sí, si estás asignado como participante en múltiples eventos.
+
+P: ¿Los resultados son en tiempo real?
+R: No. Los resultados solo se muestran cuando el evento termina.
+
+ADMINISTRADORES
+---------------
+P: ¿Puedo eliminar un voto?
+R: No. Los votos en blockchain son inmutables. Esto garantiza integridad.
+
+P: ¿Puedo ver quién votó por quién?
+R: No. El sistema protege el anonimato del voto.
+
+P: ¿Puedo extender la fecha de votación?
+R: Sí, editando el evento y modificando la fecha de término.
+
+P: ¿Puedo agregar candidatos durante la votación?
+R: Sí, pero puede causar confusión. Recomendado solo antes de iniciar.
+
+P: ¿Cuántos eventos puedo crear?
+R: Ilimitados (limitado solo por espacio en servidor).
+
+P: ¿Qué pasa si se va la luz durante una votación?
+R: Los votos ya registrados están seguros en blockchain. Los votantes 
+   pueden continuar cuando se restaure el servicio.
+
+P: ¿Puedo exportar los resultados?
+R: Actualmente no hay función de exportación. Puedes tomar capturas de 
+   pantalla o copiar los datos manualmente.
+
+P: ¿Cuánto cuesta cada voto en blockchain?
+R: Aproximadamente 0.0001 MATIC (~$0.00008 USD). Con 1 MATIC puedes 
+   registrar ~10,000 votos.
+
+TÉCNICAS
+--------
+P: ¿Qué es blockchain?
+R: Es una tecnología de registro distribuido e inmutable. Ver Glosario.
+
+P: ¿Por qué usar blockchain?
+R: Garantiza que ningún voto pueda ser alterado después de registrado.
+
+P: ¿Qué es MATIC?
+R: Es la criptomoneda de la red Polygon, usada para pagar transacciones.
+
+P: ¿Puedo usar el sistema sin Internet?
+R: No. Se necesita conexión para registrar votos en blockchain.
+
+P: ¿Es seguro el sistema?
+R: Sí. Usa encriptación, blockchain y mejores prácticas de seguridad.
+
+P: ¿Dónde se guardan las imágenes?
+R: En la carpeta media/ del servidor. En producción, usar CDN.
+
+================================================================================
+6. GLOSARIO DE TÉRMINOS
+================================================================================
+
+ADMINISTRADOR
+  Usuario con permisos para crear eventos, gestionar usuarios y ver 
+  resultados completos.
+
+BLOCKCHAIN
+  Tecnología de registro distribuido donde los datos se almacenan en 
+  bloques encadenados, haciendo imposible su modificación posterior.
+
+CANDIDATO
+  Opción de voto disponible en un evento. Un participante puede ser 
+  candidato.
+
+COMMITMENT
+  Compromiso criptográfico único generado para cada voto. Permite 
+  verificar el voto sin revelar la identidad del votante.
+
+DJANGO
+  Framework de desarrollo web en Python usado para construir VotaciónApp.
+
+EVENTO
+  Proceso de votación con fecha inicio/término, participantes y candidatos.
+
+FAUCET
+  Servicio que proporciona criptomonedas gratis para redes de prueba.
+
+HASH
+  Resultado de una función criptográfica. Se usa para generar commitments.
+
+MATIC
+  Criptomoneda de la red Polygon. Se usa para pagar las transacciones.
+
+PARTICIPANTE
+  Usuario habilitado para votar en un evento específico.
+
+POLYGON AMOY
+  Red de prueba (testnet) de Polygon donde se registran los votos.
+
+RPC
+  Remote Procedure Call. URL que permite conectarse a la blockchain.
+
+SMART CONTRACT
+  Contrato inteligente en blockchain que ejecuta automáticamente las 
+  reglas programadas.
+
+TESTNET
+  Red de prueba de blockchain. Usa criptomonedas sin valor real.
+
+TRANSACCIÓN
+  Operación registrada en blockchain. En VotaciónApp, cada voto es una 
+  transacción.
+
+VOTANTE
+  Usuario del sistema que puede emitir votos en eventos asignados.
+
+WALLET
+  Billetera digital que contiene criptomonedas y permite firmar 
+  transacciones en blockchain.
+
+WEB3
+  Conjunto de tecnologías que permite interactuar con blockchain desde 
+  aplicaciones web.
+
+================================================================================
+                           FIN DEL MANUAL DE USUARIO
+================================================================================
+
+SOPORTE Y CONTACTO
+------------------
+Para asistencia técnica o consultas:
+
+📧 Email: saiky7n7@gmail.com
+🌐 GitHub: https://github.com/Ayax111-debug/votacion_blockchain
+📝 Issues: https://github.com/Ayax111-debug/votacion_blockchain/issues
+
+Versión del Manual: 1.0
+Fecha: Diciembre 2025
+Sistema: VotaciónApp con Blockchain
+
+================================================================================
